@@ -22,7 +22,7 @@
 
 local NEMESIS = {}
 NEMESIS.Flags = {}
-NEMESIS.Version = "1.2.0"
+NEMESIS.Version = "1.3.0"
 
 ----------------------------------------------------------------------
 -- Services (cloneref-safe)
@@ -304,9 +304,9 @@ local function computeScale()
 	local vp = viewportSize()
 	local w = vp.X
 	if IS_MOBILE then
-		return math.clamp(w / 1000, 0.8, 1.2)
+		return math.clamp(w / 1000, 0.8, 1.15)
 	end
-	return math.clamp(w / 1280, 0.8, 1.1)
+	return math.clamp(w / 1500, 0.8, 1.0)
 end
 
 ----------------------------------------------------------------------
@@ -411,8 +411,8 @@ local function ensureRoot()
 	notifyHolder = Create("Frame", {
 		Name = "Notifications",
 		AnchorPoint = Vector2.new(1, 1),
-		Position = UDim2.new(1, -16, 1, -16),
-		Size = UDim2.new(0, 300, 1, -32),
+		Position = UDim2.new(1, -20, 1, -20),
+		Size = UDim2.new(0, 290, 1, -40),
 		BackgroundTransparency = 1,
 		Parent = screenGui,
 	}, {
@@ -420,7 +420,7 @@ local function ensureRoot()
 			HorizontalAlignment = Enum.HorizontalAlignment.Right,
 			VerticalAlignment = Enum.VerticalAlignment.Bottom,
 			SortOrder = Enum.SortOrder.LayoutOrder,
-			Padding = UDim.new(0, 10),
+			Padding = UDim.new(0, 8),
 		}),
 	})
 	return screenGui
@@ -433,67 +433,86 @@ function NEMESIS.Notify(opts)
 	opts = opts or {}
 	ensureRoot()
 
+	local accent = opts.accent or THEME.Accent
+	local iconSpec = resolveIcon(opts.icon)
+	local textInset = iconSpec and 34 or 0
+
+	-- Rayfield-style: dark rounded card, accent icon, title + content, slides in from the right.
 	local card = Create("Frame", {
+		Name = "Notif",
 		BackgroundColor3 = THEME.Element,
 		Size = UDim2.new(1, 0, 0, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
 		BackgroundTransparency = 1,
+		Position = UDim2.new(1, 40, 0, 0),
 		Parent = notifyHolder,
 	}, {
 		corner(10),
-		stroke(THEME.Stroke, 1, 0.2),
+		stroke(THEME.ElementStroke, 1, 0.1),
 		padding(12),
-		Create("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 4) }),
-		Create("TextLabel", {
-			Name = "Title",
+	})
+	local notifStroke = card:FindFirstChildOfClass("UIStroke")
+
+	if iconSpec then
+		local img = Create("ImageLabel", {
 			BackgroundTransparency = 1,
-			Size = UDim2.new(1, 0, 0, 18),
-			Font = FONT_BOLD,
-			Text = tostring(opts.title or "Notification"),
-			TextColor3 = THEME.Accent,
-			TextSize = 15,
-			TextXAlignment = Enum.TextXAlignment.Left,
-			TextTransparency = 1,
-		}),
-		Create("TextLabel", {
-			Name = "Content",
-			BackgroundTransparency = 1,
-			Size = UDim2.new(1, 0, 0, 0),
-			AutomaticSize = Enum.AutomaticSize.Y,
-			Font = FONT,
-			Text = tostring(opts.content or ""),
-			TextColor3 = THEME.Text,
-			TextSize = 13,
-			TextWrapped = true,
-			TextXAlignment = Enum.TextXAlignment.Left,
-			TextTransparency = 1,
-		}),
+			Position = UDim2.new(0, 0, 0, 1),
+			Size = UDim2.new(0, 22, 0, 22),
+			ImageColor3 = accent,
+			ImageTransparency = 1,
+			Parent = card,
+		})
+		applyIcon(img, iconSpec)
+	end
+
+	local title = Create("TextLabel", {
+		Name = "Title",
+		BackgroundTransparency = 1,
+		Position = UDim2.new(0, textInset, 0, 0),
+		Size = UDim2.new(1, -textInset, 0, 16),
+		Font = FONT_BOLD,
+		Text = tostring(opts.title or "Notification"),
+		TextColor3 = accent,
+		TextSize = 14,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextTransparency = 1,
+		Parent = card,
+	})
+	local content = Create("TextLabel", {
+		Name = "Content",
+		BackgroundTransparency = 1,
+		Position = UDim2.new(0, textInset, 0, 20),
+		Size = UDim2.new(1, -textInset, 0, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
+		Font = FONT,
+		Text = tostring(opts.content or ""),
+		TextColor3 = THEME.Text,
+		TextSize = 13,
+		TextWrapped = true,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextTransparency = 1,
+		Parent = card,
 	})
 
-	card.BackgroundTransparency = 1
-	tween(card, { BackgroundTransparency = 0 }, TI.NOTIFY)
-	for _, child in ipairs(card:GetChildren()) do
-		if child:IsA("TextLabel") then
-			tween(child, { TextTransparency = 0 }, TI.NOTIFY)
-		end
+	-- slide in + fade
+	tween(card, { Position = UDim2.new(0, 0, 0, 0), BackgroundTransparency = 0 }, TI.EXP)
+	tween(title, { TextTransparency = 0 }, TI.EXP)
+	tween(content, { TextTransparency = 0 }, TI.EXP)
+	for _, c in ipairs(card:GetChildren()) do
+		if c:IsA("ImageLabel") then tween(c, { ImageTransparency = 0 }, TI.EXP) end
 	end
 
 	local duration = tonumber(opts.duration) or 4
 	task.delay(duration, function()
-		if not card or not card.Parent then
-			return
+		if not card or not card.Parent then return end
+		tween(card, { Position = UDim2.new(1, 40, 0, 0), BackgroundTransparency = 1 }, TI.EXP)
+		if notifStroke then tween(notifStroke, { Transparency = 1 }, TI.EXP) end
+		tween(title, { TextTransparency = 1 }, TI.EXP)
+		tween(content, { TextTransparency = 1 }, TI.EXP)
+		for _, c in ipairs(card:GetChildren()) do
+			if c:IsA("ImageLabel") then tween(c, { ImageTransparency = 1 }, TI.EXP) end
 		end
-		tween(card, { BackgroundTransparency = 1 }, TI.SLIDE)
-		for _, child in ipairs(card:GetChildren()) do
-			if child:IsA("TextLabel") then
-				tween(child, { TextTransparency = 1 }, TI.SLIDE)
-			end
-		end
-		task.delay(0.25, function()
-			if card then
-				card:Destroy()
-			end
-		end)
+		task.delay(0.5, function() if card then card:Destroy() end end)
 	end)
 end
 
@@ -503,12 +522,12 @@ end
 local function newRow(parent, height)
 	return Create("Frame", {
 		BackgroundColor3 = THEME.Element,
-		Size = UDim2.new(1, 0, 0, height or 44),
+		Size = UDim2.new(1, 0, 0, height or 36),
 		Parent = parent,
 	}, {
 		corner(6),
 		stroke(THEME.ElementStroke, 1, 0.5),
-		padding(12),
+		padding(8),
 	})
 end
 
@@ -520,7 +539,7 @@ local function rowLabel(parent, text)
 		Font = FONT_MED,
 		Text = tostring(text or ""),
 		TextColor3 = THEME.Text,
-		TextSize = 14,
+		TextSize = 13,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextTruncate = Enum.TextTruncate.AtEnd,
 		Parent = parent,
@@ -535,7 +554,7 @@ local Elements = {}
 function Elements.Section(parent, accent, title)
 	local holder = Create("Frame", {
 		BackgroundTransparency = 1,
-		Size = UDim2.new(1, 0, 0, 26),
+		Size = UDim2.new(1, 0, 0, 22),
 		Parent = parent,
 	})
 	tagSearch(holder, title)
@@ -545,7 +564,7 @@ function Elements.Section(parent, accent, title)
 		Font = FONT_BOLD,
 		Text = string.upper(tostring(title or "Section")),
 		TextColor3 = THEME.SubText,
-		TextSize = 12,
+		TextSize = 11,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextYAlignment = Enum.TextYAlignment.Bottom,
 		Parent = holder,
@@ -667,19 +686,19 @@ function Elements.Toggle(parent, accent, opts)
 	local track = Create("Frame", {
 		AnchorPoint = Vector2.new(1, 0.5),
 		Position = UDim2.new(1, 0, 0.5, 0),
-		Size = UDim2.new(0, 44, 0, 22),
+		Size = UDim2.new(0, 38, 0, 20),
 		BackgroundColor3 = THEME.Background,
 		Parent = row,
-	}, { corner(11) })
+	}, { corner(10) })
 	local trackStroke = stroke(THEME.ToggleOff, 1.5, 0)
 	trackStroke.Parent = track
 	local knob = Create("Frame", {
 		AnchorPoint = Vector2.new(0, 0.5),
 		Position = UDim2.new(0, 3, 0.5, 0),
-		Size = UDim2.new(0, 16, 0, 16),
+		Size = UDim2.new(0, 14, 0, 14),
 		BackgroundColor3 = THEME.ToggleOff,
 		Parent = track,
-	}, { corner(8) })
+	}, { corner(7) })
 	local click = Create("TextButton", {
 		BackgroundTransparency = 1,
 		Size = UDim2.new(1, 20, 1, 0),
@@ -693,7 +712,7 @@ function Elements.Toggle(parent, accent, opts)
 		local info = animate and TI.FAST or TweenInfo.new(0)
 		local col = state and accent or THEME.ToggleOff
 		tween(knob, {
-			Position = state and UDim2.new(1, -19, 0.5, 0) or UDim2.new(0, 3, 0.5, 0),
+			Position = state and UDim2.new(1, -17, 0.5, 0) or UDim2.new(0, 3, 0.5, 0),
 			BackgroundColor3 = col,
 		}, info)
 		tween(trackStroke, { Color = col }, info)
@@ -724,15 +743,15 @@ function Elements.Slider(parent, accent, opts)
 	local value = math.clamp(tonumber(opts.default) or min, min, max)
 	local suffix = opts.suffix or ""
 
-	local row = newRow(parent, 50)
+	local row = newRow(parent, 46)
 	tagSearch(row, opts.text)
 	Create("TextLabel", {
 		BackgroundTransparency = 1,
-		Size = UDim2.new(1, -60, 0, 18),
+		Size = UDim2.new(1, -60, 0, 16),
 		Font = FONT_MED,
 		Text = tostring(opts.text or "Slider"),
 		TextColor3 = THEME.Text,
-		TextSize = 14,
+		TextSize = 13,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Parent = row,
 	})
@@ -740,11 +759,11 @@ function Elements.Slider(parent, accent, opts)
 		BackgroundTransparency = 1,
 		AnchorPoint = Vector2.new(1, 0),
 		Position = UDim2.new(1, 0, 0, 0),
-		Size = UDim2.new(0, 60, 0, 18),
+		Size = UDim2.new(0, 60, 0, 16),
 		Font = FONT_BOLD,
 		Text = tostring(value) .. suffix,
 		TextColor3 = accent,
-		TextSize = 13,
+		TextSize = 12,
 		TextXAlignment = Enum.TextXAlignment.Right,
 		Parent = row,
 	})
@@ -763,40 +782,46 @@ function Elements.Slider(parent, accent, opts)
 	local handle = Create("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.new((value - min) / (max - min), 0, 0.5, 0),
-		Size = UDim2.new(0, 12, 0, 12),
+		Size = UDim2.new(0, 11, 0, 11),
 		BackgroundColor3 = THEME.Knob,
 		ZIndex = 2,
 		Parent = bar,
 	}, { corner(6), stroke(THEME.ElementStroke, 1, 0.2) })
 
 	local control = {}
-	local function setFromAlpha(alpha, fire)
+	local function setFromAlpha(alpha, fire, instant)
 		alpha = math.clamp(alpha, 0, 1)
 		local raw = min + (max - min) * alpha
 		local stepped = min + math.floor((raw - min) / increment + 0.5) * increment
 		value = math.clamp(stepped, min, max)
 		local frac = (value - min) / (max - min)
 		valueLabel.Text = tostring(value) .. suffix
-		tween(fill, { Size = UDim2.new(frac, 0, 1, 0) }, TI.EXP)
-		tween(handle, { Position = UDim2.new(frac, 0, 0.5, 0) }, TI.EXP)
+		if instant then
+			-- follow the finger/cursor immediately while dragging (Rayfield feel)
+			fill.Size = UDim2.new(frac, 0, 1, 0)
+			handle.Position = UDim2.new(frac, 0, 0.5, 0)
+		else
+			tween(fill, { Size = UDim2.new(frac, 0, 1, 0) }, TI.EXP)
+			tween(handle, { Position = UDim2.new(frac, 0, 0.5, 0) }, TI.EXP)
+		end
 		if opts.flag then NEMESIS.Flags[opts.flag] = value end
 		if fire and type(opts.callback) == "function" then
 			pcall(opts.callback, value)
 		end
 	end
-	function control.Set(v) setFromAlpha(((tonumber(v) or min) - min) / (max - min), true) end
+	function control.Set(v) setFromAlpha(((tonumber(v) or min) - min) / (max - min), true, false) end
 	function control.Get() return value end
 
-	bindBarDrag(bar, function(rel) setFromAlpha(rel, true) end)
+	bindBarDrag(bar, function(rel) setFromAlpha(rel, true, true) end)
 	-- handle "pops" on grab (Rayfield Back easing)
 	bar.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-			tween(handle, { Size = UDim2.new(0, 16, 0, 16) }, TI.POP)
+			tween(handle, { Size = UDim2.new(0, 15, 0, 15) }, TI.POP)
 		end
 	end)
 	UserInputService.InputEnded:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-			tween(handle, { Size = UDim2.new(0, 12, 0, 12) }, TI.POP)
+			tween(handle, { Size = UDim2.new(0, 11, 0, 11) }, TI.POP)
 		end
 	end)
 
@@ -829,17 +854,31 @@ function Elements.Dropdown(parent, accent, opts)
 		TextTruncate = Enum.TextTruncate.AtEnd,
 		Parent = row,
 	})
-	local arrow = Create("TextLabel", {
-		BackgroundTransparency = 1,
-		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, 0, 0.5, 0),
-		Size = UDim2.new(0, 16, 1, 0),
-		Font = FONT_BOLD,
-		Text = "\u{25BE}",
-		TextColor3 = accent,
-		TextSize = 14,
-		Parent = row,
-	})
+	local arrow
+	local chevSpec = resolveIcon("chevron-down")
+	if chevSpec then
+		arrow = Create("ImageLabel", {
+			BackgroundTransparency = 1,
+			AnchorPoint = Vector2.new(1, 0.5),
+			Position = UDim2.new(1, 0, 0.5, 0),
+			Size = UDim2.new(0, 16, 0, 16),
+			ImageColor3 = accent,
+			Parent = row,
+		})
+		applyIcon(arrow, chevSpec)
+	else
+		arrow = Create("TextLabel", { -- fallback glyph if icon map unavailable
+			BackgroundTransparency = 1,
+			AnchorPoint = Vector2.new(1, 0.5),
+			Position = UDim2.new(1, 0, 0.5, 0),
+			Size = UDim2.new(0, 16, 1, 0),
+			Font = FONT_BOLD,
+			Text = "v",
+			TextColor3 = accent,
+			TextSize = 14,
+			Parent = row,
+		})
+	end
 
 	local listHolder = Create("Frame", {
 		BackgroundColor3 = THEME.Background,
@@ -1281,10 +1320,11 @@ function NEMESIS.Window(opts)
 	ensureRoot()
 
 	local scale = computeScale()
-	local W = opts.width or (IS_MOBILE and 520 or 660)
-	local H = opts.height or (IS_MOBILE and 360 or 440)
-	local TOPBAR_H = 46
-	local SIDEBAR_W = IS_MOBILE and 130 or 150
+	local W = opts.width or (IS_MOBILE and 500 or 600)
+	local H = opts.height or (IS_MOBILE and 350 or 400)
+	local TOPBAR_H = 40
+	local SIDEBAR_W = IS_MOBILE and 124 or 140
+	local RADIUS = 12
 
 	local root = Create("Frame", {
 		Name = "Window",
@@ -1296,16 +1336,23 @@ function NEMESIS.Window(opts)
 		Parent = screenGui,
 	}, {
 		Create("UIScale", { Scale = scale }),
-		corner(14),
+		corner(RADIUS),
 		stroke(THEME.Stroke, 1.5, 0),
 	})
 
-	-- topbar
+	-- topbar (rounded top corners; squared bottom edge so it meets the body)
 	local topbar = Create("Frame", {
 		Size = UDim2.new(1, 0, 0, TOPBAR_H),
 		BackgroundColor3 = THEME.Topbar,
 		BorderSizePixel = 0,
 		Parent = root,
+	}, { corner(RADIUS) })
+	Create("Frame", { -- bottom filler to square the topbar's lower corners
+		Position = UDim2.new(0, 0, 1, -RADIUS),
+		Size = UDim2.new(1, 0, 0, RADIUS),
+		BackgroundColor3 = THEME.Topbar,
+		BorderSizePixel = 0,
+		Parent = topbar,
 	})
 	Create("Frame", {
 		Position = UDim2.new(0, 0, 1, -1),
@@ -1313,16 +1360,17 @@ function NEMESIS.Window(opts)
 		BackgroundColor3 = THEME.Stroke,
 		BackgroundTransparency = 0.4,
 		BorderSizePixel = 0,
+		ZIndex = 2,
 		Parent = topbar,
 	})
 	local titleLabel = Create("TextLabel", {
 		BackgroundTransparency = 1,
-		Position = UDim2.new(0, 16, 0, 0),
-		Size = UDim2.new(1, -140, 1, 0),
+		Position = UDim2.new(0, 14, 0, 0),
+		Size = UDim2.new(1, -130, 1, 0),
 		Font = FONT_BOLD,
 		Text = tostring(opts.title or "NEMESIS"),
 		TextColor3 = THEME.Text,
-		TextSize = 16,
+		TextSize = 15,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Parent = topbar,
 	})
@@ -1344,26 +1392,44 @@ function NEMESIS.Window(opts)
 	end
 	makeDraggable(root, topbar)
 
-	local function topButton(symbol, offset)
+	-- icon button: prefers a Lucide icon, falls back to a glyph that renders
+	local function topButton(iconName, fallback, offset)
 		local b = Create("TextButton", {
 			AnchorPoint = Vector2.new(1, 0.5),
 			Position = UDim2.new(1, offset, 0.5, 0),
-			Size = UDim2.new(0, 28, 0, 28),
+			Size = UDim2.new(0, 26, 0, 26),
 			BackgroundTransparency = 1,
 			Font = FONT_BOLD,
-			Text = symbol,
+			Text = "",
 			TextColor3 = THEME.SubText,
-			TextSize = 18,
+			TextSize = 16,
 			Parent = topbar,
 		})
-		b.MouseEnter:Connect(function() tween(b, { TextColor3 = accent }, TI.HOVER) end)
-		b.MouseLeave:Connect(function() tween(b, { TextColor3 = THEME.SubText }, TI.HOVER) end)
+		local spec = resolveIcon(iconName)
+		local img
+		if spec then
+			img = Create("ImageLabel", {
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				Position = UDim2.new(0.5, 0, 0.5, 0),
+				Size = UDim2.new(0, 16, 0, 16),
+				BackgroundTransparency = 1,
+				ImageColor3 = THEME.SubText,
+				Parent = b,
+			})
+			applyIcon(img, spec)
+			b.MouseEnter:Connect(function() tween(img, { ImageColor3 = accent }, TI.HOVER) end)
+			b.MouseLeave:Connect(function() tween(img, { ImageColor3 = THEME.SubText }, TI.HOVER) end)
+		else
+			b.Text = fallback
+			b.MouseEnter:Connect(function() tween(b, { TextColor3 = accent }, TI.HOVER) end)
+			b.MouseLeave:Connect(function() tween(b, { TextColor3 = THEME.SubText }, TI.HOVER) end)
+		end
 		return b
 	end
 
-	local closeBtn = topButton("\u{2715}", -10)
-	local minBtn = topButton("\u{2013}", -42)
-	local searchBtn = topButton("\u{1F50D}", -74)
+	local closeBtn = topButton("x", "X", -10)
+	local minBtn = topButton("minus", "_", -40)
+	local searchBtn = topButton("search", "?", -70)
 
 	-- search field (expands from the topbar)
 	local searchBox = Create("TextBox", {
@@ -1390,14 +1456,37 @@ function NEMESIS.Window(opts)
 		ClipsDescendants = true,
 		Parent = root,
 	})
-	local sidebar = Create("ScrollingFrame", {
+	-- sidebar background: rounded so the window's bottom-left corner is curved,
+	-- with fillers squaring the top and right edges (only bottom-left stays round)
+	local sidebarBG = Create("Frame", {
 		Size = UDim2.new(0, SIDEBAR_W, 1, 0),
 		BackgroundColor3 = THEME.Sidebar,
+		BorderSizePixel = 0,
+		Parent = body,
+	}, { corner(RADIUS) })
+	Create("Frame", {
+		Size = UDim2.new(1, 0, 0, RADIUS),
+		BackgroundColor3 = THEME.Sidebar,
+		BorderSizePixel = 0,
+		Parent = sidebarBG,
+	})
+	Create("Frame", {
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, 0, 0, 0),
+		Size = UDim2.new(0, RADIUS, 1, 0),
+		BackgroundColor3 = THEME.Sidebar,
+		BorderSizePixel = 0,
+		Parent = sidebarBG,
+	})
+	local sidebar = Create("ScrollingFrame", {
+		Size = UDim2.new(1, 0, 1, 0),
+		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		ScrollBarThickness = 0,
 		CanvasSize = UDim2.new(0, 0, 0, 0),
 		AutomaticCanvasSize = Enum.AutomaticSize.Y,
-		Parent = body,
+		ZIndex = 2,
+		Parent = sidebarBG,
 	}, {
 		padding(8),
 		Create("UIListLayout", { Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder }),
@@ -1475,29 +1564,29 @@ function NEMESIS.Window(opts)
 		columns = (columns == 2) and 2 or 1
 
 		local tabBtn = Create("TextButton", {
-			Size = UDim2.new(1, 0, 0, 34),
+			Size = UDim2.new(1, 0, 0, 30),
 			BackgroundColor3 = THEME.Sidebar,
 			AutoButtonColor = false,
 			Text = "",
 			Parent = sidebar,
-		}, { corner(8) })
+		}, { corner(7) })
 		local iconImg = Create("ImageLabel", {
 			BackgroundTransparency = 1,
 			AnchorPoint = Vector2.new(0, 0.5),
 			Position = UDim2.new(0, 8, 0.5, 0),
-			Size = UDim2.new(0, 18, 0, 18),
+			Size = UDim2.new(0, 16, 0, 16),
 			ImageColor3 = THEME.SubText,
 			Parent = tabBtn,
 		})
 		local hasIcon = applyIcon(iconImg, resolveIcon(icon))
 		local txt = Create("TextLabel", {
 			BackgroundTransparency = 1,
-			Position = UDim2.new(0, hasIcon and 32 or 12, 0, 0),
-			Size = UDim2.new(1, hasIcon and -36 or -16, 1, 0),
+			Position = UDim2.new(0, hasIcon and 30 or 12, 0, 0),
+			Size = UDim2.new(1, hasIcon and -34 or -16, 1, 0),
 			Font = FONT_MED,
 			Text = tostring(name or "Tab"),
 			TextColor3 = THEME.SubText,
-			TextSize = 14,
+			TextSize = 13,
 			TextXAlignment = Enum.TextXAlignment.Left,
 			TextTruncate = Enum.TextTruncate.AtEnd,
 			Parent = tabBtn,
@@ -1513,7 +1602,7 @@ function NEMESIS.Window(opts)
 			AutomaticCanvasSize = Enum.AutomaticSize.Y,
 			Visible = false,
 			Parent = content,
-		}, { padding(12) })
+		}, { padding(10) })
 
 		local leftCol, rightCol, defaultParent
 		if columns == 2 then
@@ -1525,23 +1614,23 @@ function NEMESIS.Window(opts)
 			}, {
 				Create("UIListLayout", {
 					FillDirection = Enum.FillDirection.Horizontal,
-					Padding = UDim.new(0, 10),
+					Padding = UDim.new(0, 8),
 					SortOrder = Enum.SortOrder.LayoutOrder,
 				}),
 			})
 			local function col()
 				return Create("Frame", {
-					Size = UDim2.new(0.5, -5, 0, 0),
+					Size = UDim2.new(0.5, -4, 0, 0),
 					AutomaticSize = Enum.AutomaticSize.Y,
 					BackgroundTransparency = 1,
 					Parent = holder,
-				}, { Create("UIListLayout", { Padding = UDim.new(0, 10), SortOrder = Enum.SortOrder.LayoutOrder }) })
+				}, { Create("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }) })
 			end
 			leftCol = col()
 			rightCol = col()
 			defaultParent = leftCol
 		else
-			Create("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder, Parent = page })
+			Create("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder, Parent = page })
 			defaultParent = page
 		end
 
@@ -1585,19 +1674,19 @@ function NEMESIS.Window(opts)
 				AutomaticSize = Enum.AutomaticSize.Y,
 				Parent = boxParent,
 			}, {
-				corner(10),
+				corner(8),
 				stroke(THEME.Stroke, 1, 0.2),
-				padding(10),
-				Create("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }),
+				padding(9),
+				Create("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }),
 			})
 			tagSearch(box, title)
 			Create("TextLabel", {
 				BackgroundTransparency = 1,
-				Size = UDim2.new(1, 0, 0, 18),
+				Size = UDim2.new(1, 0, 0, 16),
 				Font = FONT_BOLD,
 				Text = tostring(title or "Group"),
 				TextColor3 = accent,
-				TextSize = 14,
+				TextSize = 13,
 				TextXAlignment = Enum.TextXAlignment.Left,
 				Parent = box,
 			})
