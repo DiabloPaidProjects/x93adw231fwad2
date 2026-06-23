@@ -22,7 +22,7 @@
 
 local NEMESIS = {}
 NEMESIS.Flags = {}
-NEMESIS.Version = "1.1.0"
+NEMESIS.Version = "1.2.0"
 
 ----------------------------------------------------------------------
 -- Services (cloneref-safe)
@@ -229,9 +229,11 @@ local THEME = {
 	ElementHover = Color3.fromRGB(38, 38, 50),
 	Group = Color3.fromRGB(26, 26, 35),
 	Stroke = Color3.fromRGB(45, 45, 58),
+	ElementStroke = Color3.fromRGB(50, 50, 62),
 	Text = Color3.fromRGB(235, 235, 240),
 	SubText = Color3.fromRGB(150, 150, 165),
 	Accent = Color3.fromRGB(140, 90, 255),
+	ToggleOff = Color3.fromRGB(100, 100, 110),
 	Knob = Color3.fromRGB(240, 240, 245),
 }
 
@@ -260,12 +262,19 @@ end
 ----------------------------------------------------------------------
 -- Tween helpers
 ----------------------------------------------------------------------
+-- Rayfield-style easing: Exponential almost everywhere.
 local TI = {
-	OPEN = TweenInfo.new(0.32, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
-	HOVER = TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-	SLIDE = TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
-	NOTIFY = TweenInfo.new(0.4, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
+	EXP = TweenInfo.new(0.6, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out),   -- hover, fills, flashes
+	FAST = TweenInfo.new(0.3, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out),  -- toggle, arrows
+	TAB = TweenInfo.new(0.7, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out),   -- open, tab switch, minimize
+	EXPAND = TweenInfo.new(0.45, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), -- dropdown / panels
+	POP = TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out),         -- slider handle grab
 }
+-- Back-compat aliases (older call sites)
+TI.OPEN = TI.TAB
+TI.HOVER = TI.EXP
+TI.SLIDE = TI.EXPAND
+TI.NOTIFY = TI.EXP
 
 local function tween(inst, props, info)
 	local t = TweenService:Create(inst, info or TI.SLIDE, props)
@@ -494,12 +503,12 @@ end
 local function newRow(parent, height)
 	return Create("Frame", {
 		BackgroundColor3 = THEME.Element,
-		Size = UDim2.new(1, 0, 0, height or 38),
+		Size = UDim2.new(1, 0, 0, height or 44),
 		Parent = parent,
 	}, {
-		corner(8),
-		stroke(THEME.Stroke, 1, 0.4),
-		padding(10),
+		corner(6),
+		stroke(THEME.ElementStroke, 1, 0.5),
+		padding(12),
 	})
 end
 
@@ -622,7 +631,7 @@ function Elements.Button(parent, accent, opts)
 		Parent = row,
 	})
 	rowLabel(row, opts.text)
-	Create("TextLabel", {
+	local arrow = Create("TextLabel", {
 		BackgroundTransparency = 1,
 		AnchorPoint = Vector2.new(1, 0.5),
 		Position = UDim2.new(1, 0, 0.5, 0),
@@ -635,9 +644,12 @@ function Elements.Button(parent, accent, opts)
 	})
 	bindHover(btn, row, THEME.Element, THEME.ElementHover)
 	btn.MouseButton1Click:Connect(function()
-		tween(row, { BackgroundColor3 = accent }, TI.HOVER)
-		task.delay(0.12, function()
-			tween(row, { BackgroundColor3 = THEME.Element }, TI.HOVER)
+		-- Rayfield-style click flash: bg -> hover, indicator fades, then revert
+		tween(row, { BackgroundColor3 = THEME.ElementHover }, TI.EXP)
+		tween(arrow, { TextTransparency = 1 }, TI.EXP)
+		task.delay(0.2, function()
+			tween(row, { BackgroundColor3 = THEME.Element }, TI.EXP)
+			tween(arrow, { TextTransparency = 0 }, TI.EXP)
 		end)
 		if type(opts.callback) == "function" then
 			pcall(opts.callback)
@@ -655,15 +667,17 @@ function Elements.Toggle(parent, accent, opts)
 	local track = Create("Frame", {
 		AnchorPoint = Vector2.new(1, 0.5),
 		Position = UDim2.new(1, 0, 0.5, 0),
-		Size = UDim2.new(0, 40, 0, 20),
-		BackgroundColor3 = THEME.Stroke,
+		Size = UDim2.new(0, 44, 0, 22),
+		BackgroundColor3 = THEME.Background,
 		Parent = row,
-	}, { corner(10) })
+	}, { corner(11) })
+	local trackStroke = stroke(THEME.ToggleOff, 1.5, 0)
+	trackStroke.Parent = track
 	local knob = Create("Frame", {
 		AnchorPoint = Vector2.new(0, 0.5),
-		Position = UDim2.new(0, 2, 0.5, 0),
+		Position = UDim2.new(0, 3, 0.5, 0),
 		Size = UDim2.new(0, 16, 0, 16),
-		BackgroundColor3 = THEME.Knob,
+		BackgroundColor3 = THEME.ToggleOff,
 		Parent = track,
 	}, { corner(8) })
 	local click = Create("TextButton", {
@@ -676,9 +690,13 @@ function Elements.Toggle(parent, accent, opts)
 
 	local control = {}
 	local function render(animate)
-		local info = animate and TI.SLIDE or TweenInfo.new(0)
-		tween(track, { BackgroundColor3 = state and accent or THEME.Stroke }, info)
-		tween(knob, { Position = state and UDim2.new(1, -18, 0.5, 0) or UDim2.new(0, 2, 0.5, 0) }, info)
+		local info = animate and TI.FAST or TweenInfo.new(0)
+		local col = state and accent or THEME.ToggleOff
+		tween(knob, {
+			Position = state and UDim2.new(1, -19, 0.5, 0) or UDim2.new(0, 3, 0.5, 0),
+			BackgroundColor3 = col,
+		}, info)
+		tween(trackStroke, { Color = col }, info)
 	end
 	function control.Set(v, silent)
 		state = v and true or false
@@ -732,7 +750,7 @@ function Elements.Slider(parent, accent, opts)
 	})
 	local bar = Create("Frame", {
 		AnchorPoint = Vector2.new(0, 1),
-		Position = UDim2.new(0, 0, 1, -2),
+		Position = UDim2.new(0, 0, 1, -4),
 		Size = UDim2.new(1, 0, 0, 6),
 		BackgroundColor3 = THEME.Stroke,
 		Parent = row,
@@ -742,6 +760,14 @@ function Elements.Slider(parent, accent, opts)
 		BackgroundColor3 = accent,
 		Parent = bar,
 	}, { corner(3) })
+	local handle = Create("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new((value - min) / (max - min), 0, 0.5, 0),
+		Size = UDim2.new(0, 12, 0, 12),
+		BackgroundColor3 = THEME.Knob,
+		ZIndex = 2,
+		Parent = bar,
+	}, { corner(6), stroke(THEME.ElementStroke, 1, 0.2) })
 
 	local control = {}
 	local function setFromAlpha(alpha, fire)
@@ -749,8 +775,10 @@ function Elements.Slider(parent, accent, opts)
 		local raw = min + (max - min) * alpha
 		local stepped = min + math.floor((raw - min) / increment + 0.5) * increment
 		value = math.clamp(stepped, min, max)
+		local frac = (value - min) / (max - min)
 		valueLabel.Text = tostring(value) .. suffix
-		tween(fill, { Size = UDim2.new((value - min) / (max - min), 0, 1, 0) }, TI.HOVER)
+		tween(fill, { Size = UDim2.new(frac, 0, 1, 0) }, TI.EXP)
+		tween(handle, { Position = UDim2.new(frac, 0, 0.5, 0) }, TI.EXP)
 		if opts.flag then NEMESIS.Flags[opts.flag] = value end
 		if fire and type(opts.callback) == "function" then
 			pcall(opts.callback, value)
@@ -760,6 +788,17 @@ function Elements.Slider(parent, accent, opts)
 	function control.Get() return value end
 
 	bindBarDrag(bar, function(rel) setFromAlpha(rel, true) end)
+	-- handle "pops" on grab (Rayfield Back easing)
+	bar.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			tween(handle, { Size = UDim2.new(0, 16, 0, 16) }, TI.POP)
+		end
+	end)
+	UserInputService.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			tween(handle, { Size = UDim2.new(0, 12, 0, 12) }, TI.POP)
+		end
+	end)
 
 	if opts.flag then NEMESIS.Flags[opts.flag] = value end
 	return control
@@ -856,11 +895,23 @@ function Elements.Dropdown(parent, accent, opts)
 			local function paint()
 				local on = multi and selected[v] or (single == v)
 				ob.TextColor3 = on and accent or THEME.Text
+				ob.BackgroundColor3 = on and THEME.ElementHover or THEME.Element
 			end
 			paint()
+			ob.MouseEnter:Connect(function()
+				local on = multi and selected[v] or (single == v)
+				if not on then tween(ob, { BackgroundColor3 = THEME.ElementHover }, TI.EXP) end
+			end)
+			ob.MouseLeave:Connect(function()
+				local on = multi and selected[v] or (single == v)
+				if not on then tween(ob, { BackgroundColor3 = THEME.Element }, TI.EXP) end
+			end)
 			ob.MouseButton1Click:Connect(function()
 				if multi then selected[v] = not selected[v] else single = v end
-				for _, b in ipairs(optionButtons) do b.TextColor3 = THEME.Text end
+				for _, b in ipairs(optionButtons) do
+					b.TextColor3 = THEME.Text
+					b.BackgroundColor3 = THEME.Element
+				end
 				paint()
 				refreshLabel()
 				fire()
@@ -873,8 +924,8 @@ function Elements.Dropdown(parent, accent, opts)
 	function control.Toggle(force)
 		open = (force == nil) and (not open) or force
 		local target = open and math.min(#options, 6) * 30 + 8 or 0
-		tween(listHolder, { Size = UDim2.new(1, 0, 0, target) }, TI.SLIDE)
-		tween(arrow, { Rotation = open and 180 or 0 }, TI.SLIDE)
+		tween(listHolder, { Size = UDim2.new(1, 0, 0, target) }, TI.EXPAND)
+		tween(arrow, { Rotation = open and 180 or 0 }, TI.FAST)
 	end
 	function control.Set(v)
 		if multi then
@@ -910,10 +961,11 @@ function Elements.Input(parent, accent, opts)
 	opts = opts or {}
 	local row = newRow(parent)
 	rowLabel(row, opts.text)
+	local boxStroke = stroke(THEME.ElementStroke, 1, 0.3)
 	local box = Create("TextBox", {
 		AnchorPoint = Vector2.new(1, 0.5),
 		Position = UDim2.new(1, 0, 0.5, 0),
-		Size = UDim2.new(0, 130, 0, 24),
+		Size = UDim2.new(0, 140, 0, 28),
 		BackgroundColor3 = THEME.Background,
 		Font = FONT,
 		PlaceholderText = tostring(opts.placeholder or "..."),
@@ -923,12 +975,16 @@ function Elements.Input(parent, accent, opts)
 		TextSize = 13,
 		ClearTextOnFocus = opts.clearOnFocus and true or false,
 		Parent = row,
-	}, { corner(6), stroke(THEME.Stroke, 1, 0.3), padding(6) })
+	}, { corner(6), boxStroke, padding(6) })
 
 	local control = {}
 	function control.Set(v) box.Text = tostring(v) end
 	function control.Get() return box.Text end
+	box.Focused:Connect(function()
+		tween(boxStroke, { Color = accent }, TI.EXP)
+	end)
 	box.FocusLost:Connect(function()
+		tween(boxStroke, { Color = THEME.ElementStroke }, TI.EXP)
 		if opts.flag then NEMESIS.Flags[opts.flag] = box.Text end
 		if type(opts.callback) == "function" then pcall(opts.callback, box.Text) end
 	end)
@@ -943,10 +999,11 @@ function Elements.Keybind(parent, accent, opts)
 	local row = newRow(parent)
 	rowLabel(row, opts.text)
 
+	local kbStroke = stroke(THEME.ElementStroke, 1, 0.3)
 	local btn = Create("TextButton", {
 		AnchorPoint = Vector2.new(1, 0.5),
 		Position = UDim2.new(1, 0, 0.5, 0),
-		Size = UDim2.new(0, 80, 0, 24),
+		Size = UDim2.new(0, 84, 0, 28),
 		BackgroundColor3 = THEME.Background,
 		Font = FONT_MED,
 		Text = key and tostring(key.Name or key) or "None",
@@ -954,7 +1011,7 @@ function Elements.Keybind(parent, accent, opts)
 		TextSize = 13,
 		AutoButtonColor = false,
 		Parent = row,
-	}, { corner(6), stroke(THEME.Stroke, 1, 0.3) })
+	}, { corner(6), kbStroke })
 
 	local listening = false
 	local toggled = false
@@ -962,6 +1019,7 @@ function Elements.Keybind(parent, accent, opts)
 	function control.Set(v)
 		key = v
 		btn.Text = v and tostring(v.Name or v) or "None"
+		tween(kbStroke, { Color = THEME.ElementStroke }, TI.EXP)
 		if opts.flag then NEMESIS.Flags[opts.flag] = key end
 	end
 	function control.Get() return key end
@@ -969,6 +1027,7 @@ function Elements.Keybind(parent, accent, opts)
 	btn.MouseButton1Click:Connect(function()
 		listening = true
 		btn.Text = "..."
+		tween(kbStroke, { Color = accent }, TI.EXP)
 	end)
 	UserInputService.InputBegan:Connect(function(input, gpe)
 		if listening and input.UserInputType == Enum.UserInputType.Keyboard then
@@ -1184,7 +1243,7 @@ function Elements.ColorPicker(parent, accent, opts)
 			if not ok then panel.Position = UDim2.new(0.5, -115, 0.5, -125) end
 			panel.Visible = true
 			panel.Size = UDim2.new(0, 230, 0, 0)
-			tween(panel, { Size = UDim2.new(0, 230, 0, 250) }, TI.OPEN)
+			tween(panel, { Size = UDim2.new(0, 230, 0, 250) }, TI.EXPAND)
 		else
 			tween(panel, { Size = UDim2.new(0, 230, 0, 0) }, TI.SLIDE)
 			task.delay(0.2, function() if not opened and panel then panel.Visible = false end end)
@@ -1401,8 +1460,8 @@ function NEMESIS.Window(opts)
 			t.page.Visible = false
 		end
 		page.Visible = true
-		page.Position = UDim2.new(0, 12, 0, 0)
-		tween(page, { Position = UDim2.new(0, 0, 0, 0) }, TI.SLIDE)
+		page.Position = UDim2.new(0, 14, 0, 0)
+		tween(page, { Position = UDim2.new(0, 0, 0, 0) }, TI.TAB)
 		tween(entry.button, { BackgroundColor3 = THEME.Element }, TI.HOVER)
 		tween(entry.label, { TextColor3 = accent }, TI.HOVER)
 		if entry.icon then tween(entry.icon, { ImageColor3 = accent }, TI.HOVER) end

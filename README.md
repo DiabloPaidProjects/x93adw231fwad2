@@ -14,7 +14,7 @@ local NEMESIS = loadstring(game:HttpGet("https://raw.githubusercontent.com/Diabl
 - 🖼️ **Icons** — Lucide names (`icon = "home"`) or raw asset IDs.
 - 🔎 **Search** — topbar search filters the active tab.
 - 📱 **Mobile / touch support** — responsive scaling, touch-drag, and a floating reopen button on phones.
-- ✨ **Smooth transitions** — open/close, **minimize**, toggle, tab switch, dropdown, color panel, notify — all `TweenService`-animated.
+- ✨ **Rayfield-style elements & animations** — 45px rows with a subtle stroke, sliding recoloring toggles, sliders with a draggable handle, smooth dropdown expand + arrow spin, button click-flash, focus-tinted inputs/keybinds — all on Rayfield's Exponential easing (open/minimize/tab-switch/color-panel/notify included).
 - 🔌 **Executor-friendly** — `gethui` → `protect_gui` → `CoreGui` → `PlayerGui` parenting fallback; every executor global is feature-detected and `pcall`-guarded, so it degrades instead of erroring.
 - 🧩 **Components** — Section, Button, Toggle, Slider, Dropdown (single + multi), Input, Keybind, ColorPicker, Label, Paragraph + notifications.
 
