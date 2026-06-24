@@ -14,8 +14,7 @@ end
 local Win = NEMESIS.Window({
 	title = "NEMESIS",
 	accent = Color3.fromRGB(140, 90, 255),
-	game = "CS2",
-	status = "Connected",
+	game = "NEMESIS",
 	configs = { "HvH", "Legit", "Rage", "Default" },
 	toggleKey = Enum.KeyCode.RightShift,
 	onSave = function() notify("Config", "onSave fired", 2) end,

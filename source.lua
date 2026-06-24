@@ -1677,32 +1677,52 @@ function NEMESIS.Window(opts)
 		return b
 	end
 
-	local closeBtn = Create("TextButton", {
-		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, -16, 0.5, 0),
-		Size = UDim2.new(0, 26, 0, 26),
-		BackgroundTransparency = 1,
-		Font = FONT_BOLD,
-		Text = "\u{2715}",
-		TextColor3 = THEME.SubText,
-		TextSize = 16,
-		Parent = topbar,
-	})
-	closeBtn.MouseEnter:Connect(function() tween(closeBtn, { TextColor3 = accent }, TI.HOVER) end)
-	closeBtn.MouseLeave:Connect(function() tween(closeBtn, { TextColor3 = THEME.SubText }, TI.HOVER) end)
-	local minBtn = Create("TextButton", {
-		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, -48, 0.5, 0),
-		Size = UDim2.new(0, 26, 0, 26),
-		BackgroundTransparency = 1,
-		Font = FONT_BOLD,
-		Text = "\u{2013}",
-		TextColor3 = THEME.SubText,
-		TextSize = 18,
-		Parent = topbar,
-	})
-	minBtn.MouseEnter:Connect(function() tween(minBtn, { TextColor3 = accent }, TI.HOVER) end)
-	minBtn.MouseLeave:Connect(function() tween(minBtn, { TextColor3 = THEME.SubText }, TI.HOVER) end)
+	-- top-bar icon button: Lucide image with a glyph fallback + swappable icon
+	local function topbarIcon(iconName, fallback, xOffset, glyphSize)
+		local b = Create("TextButton", {
+			AnchorPoint = Vector2.new(1, 0.5),
+			Position = UDim2.new(1, xOffset, 0.5, 0),
+			Size = UDim2.new(0, 26, 0, 26),
+			BackgroundTransparency = 1,
+			Font = FONT_BOLD,
+			Text = "",
+			TextColor3 = THEME.SubText,
+			TextSize = glyphSize or 16,
+			AutoButtonColor = false,
+			Parent = topbar,
+		})
+		local img
+		local function setIcon(name, fb)
+			local spec = resolveIcon(name)
+			if spec then
+				if not img then
+					img = Create("ImageLabel", {
+						AnchorPoint = Vector2.new(0.5, 0.5),
+						Position = UDim2.new(0.5, 0, 0.5, 0),
+						Size = UDim2.new(0, 16, 0, 16),
+						BackgroundTransparency = 1,
+						ImageColor3 = THEME.SubText,
+						Parent = b,
+					})
+				end
+				applyIcon(img, spec)
+				b.Text = ""
+			else
+				if img then img.Visible = false end
+				b.Text = fb or ""
+			end
+		end
+		setIcon(iconName, fallback)
+		local function tint(c)
+			if img and img.Visible then tween(img, { ImageColor3 = c }, TI.HOVER) else tween(b, { TextColor3 = c }, TI.HOVER) end
+		end
+		b.MouseEnter:Connect(function() tint(accent) end)
+		b.MouseLeave:Connect(function() tint(THEME.SubText) end)
+		return b, setIcon
+	end
+
+	local closeBtn = topbarIcon("x", "\u{2715}", -16, 16)
+	local minBtn, setMinIcon = topbarIcon("minus", "\u{2013}", -48, 18)
 
 	-- search pill
 	local searchW = IS_MOBILE and 150 or 230
@@ -1823,39 +1843,47 @@ function NEMESIS.Window(opts)
 		else NEMESIS.Notify({ title = "Config", content = "Saved", duration = 2 }) end
 	end)
 
-	-- status row: dot + game / state ........ FPS
+	-- status row: dot + name (+ optional sub-line) ........ FPS
+	local statusName = opts.game or opts.title or "NEMESIS"
+	local statusSub = opts.status
+	local hasSub = statusSub ~= nil and tostring(statusSub) ~= ""
+	local rowMid = hasSub and -22 or -20
+
 	local statusDot = Create("Frame", {
 		AnchorPoint = Vector2.new(0, 0.5),
-		Position = UDim2.new(0, 2, 1, -22),
+		Position = UDim2.new(0, 2, 1, rowMid),
 		Size = UDim2.new(0, 9, 0, 9),
 		BackgroundColor3 = THEME.Good,
 		Parent = footer,
 	}, { corner(5) })
 	Create("TextLabel", {
-		Position = UDim2.new(0, 18, 1, -34),
+		AnchorPoint = Vector2.new(0, hasSub and 0 or 0.5),
+		Position = UDim2.new(0, 18, 1, hasSub and -34 or rowMid),
 		Size = UDim2.new(1, -70, 0, 16),
 		BackgroundTransparency = 1,
 		Font = FONT_BOLD,
-		Text = tostring(opts.game or "Game"),
+		Text = tostring(statusName),
 		TextColor3 = THEME.Text,
-		TextSize = 13,
+		TextSize = 14,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Parent = footer,
 	})
-	Create("TextLabel", {
-		Position = UDim2.new(0, 18, 1, -18),
-		Size = UDim2.new(1, -70, 0, 14),
-		BackgroundTransparency = 1,
-		Font = FONT,
-		Text = tostring(opts.status or "Connected"),
-		TextColor3 = THEME.SubText,
-		TextSize = 12,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		Parent = footer,
-	})
+	if hasSub then
+		Create("TextLabel", {
+			Position = UDim2.new(0, 18, 1, -18),
+			Size = UDim2.new(1, -70, 0, 14),
+			BackgroundTransparency = 1,
+			Font = FONT,
+			Text = tostring(statusSub),
+			TextColor3 = THEME.SubText,
+			TextSize = 12,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			Parent = footer,
+		})
+	end
 	local fpsLabel = Create("TextLabel", {
 		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, 0, 1, -22),
+		Position = UDim2.new(1, 0, 1, rowMid),
 		Size = UDim2.new(0, 64, 0, 16),
 		BackgroundTransparency = 1,
 		Font = FONT_MED,
@@ -2413,10 +2441,10 @@ function NEMESIS.Window(opts)
 		if resizeGrip then resizeGrip.Visible = not m end
 		if m then
 			tween(root, { Size = UDim2.new(0, W, 0, TOPBAR_H) }, TI.OPEN)
-			minBtn.Text = "\u{002B}"
+			setMinIcon("plus", "\u{002B}")
 		else
 			tween(root, { Size = UDim2.new(0, W, 0, H) }, TI.OPEN)
-			minBtn.Text = "\u{2013}"
+			setMinIcon("minus", "\u{2013}")
 		end
 	end
 	function Win.Toggle(force)

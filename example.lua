@@ -10,8 +10,7 @@ local NEMESIS = loadstring(game:HttpGet("https://raw.githubusercontent.com/Diabl
 local Win = NEMESIS.Window({
 	title = "NEMESIS",
 	accent = Color3.fromRGB(140, 90, 255),
-	game = "CS2",
-	status = "Connected",
+	game = "NEMESIS",
 	configs = { "HvH", "Legit", "Rage", "Default" },
 	toggleKey = Enum.KeyCode.RightShift,
 	onSave = function() NEMESIS.Notify({ title = "Config", content = "Saved current config", duration = 2 }) end,
