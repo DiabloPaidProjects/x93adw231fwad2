@@ -1596,7 +1596,43 @@ function NEMESIS.Window(opts)
 	})
 	makeDraggable(root, topbar)
 
-	-- logo mark: custom image (opts.logo) or the default purple "N" tile
+	-- logo: a built-in neon "N" + NEMESIS wordmark (drawn in pure UI so it ships
+	-- to everyone with no asset upload). Pass opts.logo = <assetId> to swap the
+	-- mark for an uploaded image instead.
+	local wordmarkText = string.upper(tostring(opts.title or "NEMESIS"))
+	local NEON_CORE = Color3.fromRGB(236, 218, 255) -- bright lilac core
+	local NEON_GLOW = Color3.fromRGB(150, 92, 255)  -- purple bloom
+
+	-- a glowing label: a soft fat-stroke halo copy behind a crisp gradient core
+	local function neon(text, pos, size, textSize, xalign)
+		xalign = xalign or Enum.TextXAlignment.Left
+		Create("TextLabel", { -- halo
+			AnchorPoint = Vector2.new(0, 0.5),
+			Position = pos, Size = size,
+			BackgroundTransparency = 1,
+			Font = FONT_BOLD, Text = text,
+			TextColor3 = NEON_GLOW, TextTransparency = 0.25, TextSize = textSize,
+			TextXAlignment = xalign, TextYAlignment = Enum.TextYAlignment.Center,
+			Parent = topbar,
+		}, { stroke(NEON_GLOW, 4, 0.55) })
+		local main = Create("TextLabel", { -- crisp core
+			AnchorPoint = Vector2.new(0, 0.5),
+			Position = pos, Size = size,
+			BackgroundTransparency = 1,
+			Font = FONT_BOLD, Text = text,
+			TextColor3 = NEON_CORE, TextSize = textSize,
+			TextXAlignment = xalign, TextYAlignment = Enum.TextYAlignment.Center,
+			Parent = topbar,
+		}, {
+			stroke(NEON_GLOW, 1.6, 0.1),
+			Create("UIGradient", {
+				Rotation = 90,
+				Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(198, 152, 255)),
+			}),
+		})
+		return main
+	end
+
 	local logoSpec = resolveIcon(opts.logo)
 	if logoSpec then
 		local logoImg = Create("ImageLabel", {
@@ -1607,43 +1643,11 @@ function NEMESIS.Window(opts)
 			Parent = topbar,
 		})
 		applyIcon(logoImg, logoSpec)
+		neon(wordmarkText, UDim2.new(0, 64, 0.5, 0), UDim2.new(0, 160, 1, 0), 18)
 	else
-		local tile = Create("Frame", {
-			Position = UDim2.new(0, 18, 0.5, 0),
-			AnchorPoint = Vector2.new(0, 0.5),
-			Size = UDim2.new(0, 34, 0, 34),
-			BackgroundColor3 = accent,
-			Parent = topbar,
-		}, {
-			corner(10),
-			stroke(Color3.fromRGB(185, 155, 255), 1, 0.25),
-			Create("UIGradient", {
-				Rotation = 90,
-				Color = ColorSequence.new(Color3.fromRGB(168, 124, 255), Color3.fromRGB(118, 70, 234)),
-			}),
-		})
-		Create("TextLabel", {
-			Size = UDim2.new(1, 0, 1, 0),
-			BackgroundTransparency = 1,
-			Font = FONT_BOLD,
-			Text = "N",
-			TextColor3 = THEME.Text,
-			TextSize = 20,
-			Parent = tile,
-		})
+		neon("N", UDim2.new(0, 14, 0.5, 0), UDim2.new(0, 30, 1, 0), 30, Enum.TextXAlignment.Center)
+		neon(wordmarkText, UDim2.new(0, 54, 0.5, 0), UDim2.new(0, 170, 1, 0), 19)
 	end
-	Create("TextLabel", {
-		Position = UDim2.new(0, 62, 0.5, 0),
-		AnchorPoint = Vector2.new(0, 0.5),
-		Size = UDim2.new(0, 150, 1, 0),
-		BackgroundTransparency = 1,
-		Font = FONT_BOLD,
-		Text = string.upper(tostring(opts.title or "NEMESIS")),
-		TextColor3 = THEME.Text,
-		TextSize = 18,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		Parent = topbar,
-	})
 
 	-- centered top-tab bar
 	local tabBar = Create("Frame", {
