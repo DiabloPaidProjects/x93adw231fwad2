@@ -105,7 +105,7 @@ end
 -- (getcustomasset / getsynasset), cached on disk after the first load.
 ----------------------------------------------------------------------
 local LOGO_URL = "https://raw.githubusercontent.com/DiabloPaidProjects/NEMESIS/main/assets/nemesis_logo.png"
-local LOGO_FILE = "nemesis_logo_v2.png" -- bump when assets/nemesis_logo.png changes (busts on-disk cache)
+local LOGO_FILE = "nemesis_logo_v3.png" -- bump when assets/nemesis_logo.png changes (busts on-disk cache)
 local brandLogoCache = nil -- nil = untried, false = failed, string = rbxasset id
 
 local function customAssetFn()
@@ -1651,30 +1651,25 @@ function NEMESIS.Window(opts)
 			BackgroundTransparency = 1,
 			Font = FONT_BOLD,
 			Text = wordmarkText,
-			TextColor3 = Color3.fromRGB(232, 220, 255),
+			TextColor3 = THEME.Text,
 			TextSize = 18,
 			TextXAlignment = Enum.TextXAlignment.Left,
 			Parent = topbar,
-		}, {
-			stroke(Color3.fromRGB(150, 92, 255), 1, 0.45),
-			Create("UIGradient", {
-				Rotation = 90,
-				Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(192, 152, 255)),
-			}),
 		})
 	end
 
 	if brandAsset then
-		-- full N + NEMESIS brand image (aspect ~3.67); wordmark is part of it
+		-- square N mark (the wordmark is drawn as text beside it)
 		Create("ImageLabel", {
 			Position = UDim2.new(0, 14, 0.5, 0),
 			AnchorPoint = Vector2.new(0, 0.5),
-			Size = UDim2.new(0, 162, 0, 44),
+			Size = UDim2.new(0, 42, 0, 42),
 			BackgroundTransparency = 1,
 			Image = brandAsset,
 			ScaleType = Enum.ScaleType.Fit,
 			Parent = topbar,
 		})
+		wordmark(64)
 	elseif logoSpec then
 		local logoImg = Create("ImageLabel", {
 			Position = UDim2.new(0, 16, 0.5, 0),
