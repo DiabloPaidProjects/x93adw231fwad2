@@ -2522,48 +2522,105 @@ function NEMESIS.Window(opts)
 		ZIndex = 6,
 		Parent = root,
 	})
-	-- diagonal-line resize handle (Exe6 style): short ╱ strokes in the corner
+	-- diagonal-line resize handle: short ╱ strokes in the corner
+	local gripLines = {}
 	for _, d in ipairs({ { len = 16, off = 1 }, { len = 11, off = 5 }, { len = 6, off = 9 } }) do
-		Create("Frame", {
+		gripLines[#gripLines + 1] = Create("Frame", {
 			AnchorPoint = Vector2.new(1, 1),
 			Position = UDim2.new(1, -d.off, 1, -d.off),
 			Size = UDim2.new(0, 2, 0, d.len),
 			Rotation = 45,
 			BackgroundColor3 = THEME.SubText,
-			BackgroundTransparency = 0.25,
+			BackgroundTransparency = 0.4,
 			BorderSizePixel = 0,
 			ZIndex = 6,
 			Parent = resizeGrip,
 		}, { corner(1) })
 	end
 	do
+		-- SIRIUS-style smooth resize: a RenderStepped loop where the visual size
+		-- eases toward a cursor-driven target each frame (frame-rate independent
+		-- exponential smoothing), so the window butter-glides to follow the cursor.
+		local SMOOTH_K = 26          -- higher = tighter cursor-follow (SIRIUS ~28)
 		local resizing = false
-		local startInput, startW, startH
-		-- the exact Exe6 resize feel: a long exponential glide toward the cursor
-		local RESIZE_TI = TweenInfo.new(0.5, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
+		local hovering = false
+		local startPointer, startW, startH
+		local targetW, targetH = W, H
+		local visualW, visualH = W, H
+		local loopConn
+
+		local function getPointer(input)
+			if input and input.UserInputType == Enum.UserInputType.Touch then
+				return Vector2.new(input.Position.X, input.Position.Y)
+			end
+			return UserInputService:GetMouseLocation()
+		end
+		local function maxSize()
+			local vp = viewportSize()
+			return math.max(minW, vp.X / scale - 40), math.max(minH, vp.Y / scale - 40)
+		end
+		local function setGrip(t)
+			for _, l in ipairs(gripLines) do tween(l, { BackgroundTransparency = t }, TI.HOVER) end
+		end
+		local function stopLoop()
+			if loopConn then loopConn:Disconnect(); loopConn = nil end
+		end
+		local function startLoop()
+			stopLoop()
+			visualW, visualH = W, H
+			loopConn = RunService.RenderStepped:Connect(function(dt)
+				local alpha = 1 - math.exp(-dt * SMOOTH_K)
+				visualW = visualW + (targetW - visualW) * alpha
+				visualH = visualH + (targetH - visualH) * alpha
+				W, H = visualW, visualH
+				root.Size = UDim2.new(0, visualW, 0, visualH)
+				if not resizing
+					and math.abs(visualW - targetW) <= 0.45
+					and math.abs(visualH - targetH) <= 0.45 then
+					W, H = targetW, targetH
+					root.Size = UDim2.new(0, W, 0, H)
+					stopLoop()
+				end
+			end)
+		end
+
+		resizeGrip.MouseEnter:Connect(function()
+			hovering = true
+			if not resizing then setGrip(0.15) end
+		end)
+		resizeGrip.MouseLeave:Connect(function()
+			hovering = false
+			if not resizing then setGrip(0.4) end
+		end)
 		resizeGrip.InputBegan:Connect(function(input)
 			if input.UserInputType == Enum.UserInputType.MouseButton1
 				or input.UserInputType == Enum.UserInputType.Touch then
 				resizing = true
-				startInput = input.Position
+				startPointer = getPointer(input)
 				startW, startH = W, H
-				input.Changed:Connect(function()
-					if input.UserInputState == Enum.UserInputState.End then resizing = false end
-				end)
+				targetW, targetH = W, H
+				setGrip(0)
+				startLoop()
 			end
 		end)
 		UserInputService.InputChanged:Connect(function(input)
 			if not resizing then return end
 			if input.UserInputType == Enum.UserInputType.MouseMovement
 				or input.UserInputType == Enum.UserInputType.Touch then
-				local vp = viewportSize()
-				local delta = input.Position - startInput
-				local maxW = math.max(minW, vp.X / scale - 40)
-				local maxH = math.max(minH, vp.Y / scale - 40)
+				local delta = getPointer(input) - startPointer
+				local maxW, maxH = maxSize()
 				-- *2: window is centre-anchored, so the corner tracks the cursor
-				W = math.clamp(startW + (delta.X / scale) * 2, minW, maxW)
-				H = math.clamp(startH + (delta.Y / scale) * 2, minH, maxH)
-				tween(root, { Size = UDim2.new(0, W, 0, H) }, RESIZE_TI)
+				targetW = math.clamp(startW + (delta.X / scale) * 2, minW, maxW)
+				targetH = math.clamp(startH + (delta.Y / scale) * 2, minH, maxH)
+			end
+		end)
+		UserInputService.InputEnded:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1
+				or input.UserInputType == Enum.UserInputType.Touch then
+				if resizing then
+					resizing = false
+					setGrip(hovering and 0.15 or 0.4)
+				end
 			end
 		end)
 	end
