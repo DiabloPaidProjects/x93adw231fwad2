@@ -1722,13 +1722,13 @@ function NEMESIS.Window(opts)
 	local tabBar = Create("Frame", {
 		Size = UDim2.new(0, 0, 0, 38),
 		AutomaticSize = Enum.AutomaticSize.X,
-		BackgroundColor3 = THEME.Element,
-		BackgroundTransparency = 0.35,
+		BackgroundColor3 = THEME.Background,
+		BackgroundTransparency = 0.15,
 		ClipsDescendants = true,
 		Parent = tabArea,
 	}, {
-		corner(10),
-		stroke(THEME.Stroke, 1, 0.3),
+		corner(14),
+		stroke(THEME.Stroke, 1, 0.2),
 		Create("UIListLayout", {
 			FillDirection = Enum.FillDirection.Horizontal,
 			VerticalAlignment = Enum.VerticalAlignment.Center,
@@ -2075,7 +2075,7 @@ function NEMESIS.Window(opts)
 		local btn = Create("TextButton", {
 			Size = UDim2.new(0, 0, 1, 0),
 			AutomaticSize = Enum.AutomaticSize.X,
-			BackgroundColor3 = Color3.fromRGB(44, 46, 58),
+			BackgroundColor3 = Color3.fromRGB(36, 38, 48),
 			BackgroundTransparency = 1,
 			AutoButtonColor = false,
 			Font = FONT_MED,
@@ -2090,8 +2090,8 @@ function NEMESIS.Window(opts)
 		local divider = Create("Frame", {
 			AnchorPoint = Vector2.new(1, 0.5),
 			Position = UDim2.new(1, 0, 0.5, 0),
-			Size = UDim2.new(0, 1, 0, 18),
-			BackgroundColor3 = THEME.Stroke,
+			Size = UDim2.new(0, 1, 1, 0),
+			BackgroundColor3 = THEME.ElementStroke,
 			BorderSizePixel = 0,
 			Visible = false,
 			ZIndex = 2,
