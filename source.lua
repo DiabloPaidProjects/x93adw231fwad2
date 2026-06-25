@@ -989,6 +989,30 @@ function Elements.Slider(parent, accent, opts)
 	return control
 end
 
+-- ===== shared dropdown overlay (neverlose-style floating panels) =====
+local _ddCurrent = nil   -- handle of the currently open dropdown (one at a time)
+local function closeOpenDropdown()
+	if _ddCurrent then _ddCurrent.close() end
+end
+local _ddLayers = setmetatable({}, { __mode = "k" })  -- ScreenGui -> overlay frame
+local function dropdownLayer(field)
+	local sg = field:FindFirstAncestorWhichIsA("ScreenGui")
+	if not sg then return nil end
+	local layer = _ddLayers[sg]
+	if not layer or not layer.Parent then
+		layer = Create("Frame", {
+			Name = "NemesisDropdownLayer",
+			Size = UDim2.new(1, 0, 1, 0),
+			BackgroundTransparency = 1,
+			BorderSizePixel = 0,
+			ZIndex = 50000,
+			Parent = sg,
+		})
+		_ddLayers[sg] = layer
+	end
+	return layer
+end
+
 function Elements.Dropdown(parent, accent, opts)
 	opts = opts or {}
 	local options = opts.options or {}
@@ -1006,7 +1030,7 @@ function Elements.Dropdown(parent, accent, opts)
 	local current = Create("TextLabel", {
 		BackgroundTransparency = 1,
 		Position = UDim2.new(0, 10, 0, 0),
-		Size = UDim2.new(1, -34, 1, 0),
+		Size = UDim2.new(1, -32, 1, 0),
 		Font = FONT,
 		Text = "...",
 		TextColor3 = THEME.Text,
@@ -1015,22 +1039,16 @@ function Elements.Dropdown(parent, accent, opts)
 		TextTruncate = Enum.TextTruncate.AtEnd,
 		Parent = field,
 	})
-		-- neverlose "liner": a thin divider between the value and the arrow
-		Create("Frame", {
-			AnchorPoint = Vector2.new(1, 0.5),
-			Position = UDim2.new(1, -26, 0.5, 0),
-			Size = UDim2.new(0, 2, 0, 14),
-			BackgroundColor3 = THEME.ElementStroke,
-			BorderSizePixel = 0,
-			Parent = field,
-		})
+	-- arrow only (no liner / divider before it)
+	local arrowIsImage = false
 	local arrow
 	local chevSpec = resolveIcon("chevron-down")
 	if chevSpec then
+		arrowIsImage = true
 		arrow = Create("ImageLabel", {
 			BackgroundTransparency = 1,
 			AnchorPoint = Vector2.new(1, 0.5),
-			Position = UDim2.new(1, -10, 0.5, 0),
+			Position = UDim2.new(1, -9, 0.5, 0),
 			Size = UDim2.new(0, 15, 0, 15),
 			ImageColor3 = THEME.SubText,
 			Parent = field,
@@ -1045,34 +1063,46 @@ function Elements.Dropdown(parent, accent, opts)
 			Font = FONT_BOLD,
 			Text = "\u{25BE}",
 			TextColor3 = THEME.SubText,
-			TextSize = 15,
+			TextSize = 14,
 			Parent = field,
 		})
 	end
+	local arrowColorProp = arrowIsImage and "ImageColor3" or "TextColor3"
 
-	-- right-aligned droplist that pushes following content down
-	local listHolder = Create("Frame", {
-		BackgroundTransparency = 1,
-		Size = UDim2.new(1, 0, 0, 0),
-		ClipsDescendants = true,
-		Parent = parent,
-	})
-	-- inner panel auto-sizes to ALL its option rows (so none get cut off); the
-	-- clipping listHolder above just reveals it as it expands
-	local listStroke = stroke(THEME.ElementStroke, 1, 1)
-	local listInner = Create("Frame", {
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -ROW_PAD, 0, 2),
-		Size = UDim2.new(FIELD_FRAC, -16, 0, 0),
-		AutomaticSize = Enum.AutomaticSize.Y,
+	-- floating panel (neverlose style): a separate overlay that fades in below
+	-- the field and tracks its position; it does NOT push surrounding content
+	local PANEL_MAXH = 200   -- logical max height before the list scrolls
+	local OPT_H = 28         -- logical option row height
+	local panelScale = Create("UIScale", { Scale = 1 })
+	local panelStroke = stroke(THEME.ElementStroke, 1, 1)
+	local panel = Create("Frame", {
+		Name = "NemesisDropdown",
 		BackgroundColor3 = THEME.Element,
 		BackgroundTransparency = 1,
-		Parent = listHolder,
+		BorderSizePixel = 0,
+		Visible = false,
+		ZIndex = 50001,
 	}, {
 		corner(8),
-		listStroke,
+		panelStroke,
+		panelScale,
+	})
+	local holder = Create("ScrollingFrame", {
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 6),
+		Size = UDim2.new(1, -12, 1, -12),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		ScrollBarThickness = 3,
+		ScrollBarImageColor3 = accent,
+		ScrollBarImageTransparency = 1,
+		CanvasSize = UDim2.new(0, 0, 0, 0),
+		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		ScrollingDirection = Enum.ScrollingDirection.Y,
+		ZIndex = 50002,
+		Parent = panel,
+	}, {
 		Create("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 3) }),
-		padding(5),
 	})
 
 	local open = false
@@ -1100,19 +1130,22 @@ function Elements.Dropdown(parent, accent, opts)
 		end
 	end
 
+	local FADE = TweenInfo.new(0.16, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+
+	-- option rows (neverlose style: accent dot on the left + the text slides
+	-- right when selected; dimmed text when not)
 	local optionButtons = {}
 	local function rebuildOptions()
 		for _, b in ipairs(optionButtons) do b:Destroy() end
 		optionButtons = {}
 		for _, v in ipairs(options) do
-			-- neverlose-style option: accent-gradient dot on the left + the text
-			-- slides right when selected; text dimmed when not selected
 			local ob = Create("TextButton", {
 				BackgroundTransparency = 1,
-				Size = UDim2.new(1, 0, 0, 26),
+				Size = UDim2.new(1, 0, 0, OPT_H),
 				AutoButtonColor = false,
 				Text = "",
-				Parent = listInner,
+				ZIndex = 50003,
+				Parent = holder,
 			})
 			local dot = Create("Frame", {
 				AnchorPoint = Vector2.new(0, 0.5),
@@ -1121,6 +1154,7 @@ function Elements.Dropdown(parent, accent, opts)
 				BackgroundColor3 = accent,
 				BackgroundTransparency = 1,
 				BorderSizePixel = 0,
+				ZIndex = 50004,
 				Parent = ob,
 			}, {
 				corner(3),
@@ -1137,34 +1171,35 @@ function Elements.Dropdown(parent, accent, opts)
 				Font = FONT,
 				Text = tostring(v),
 				TextColor3 = THEME.Text,
-				TextTransparency = 0.35,
-				TextSize = 16,
+				TextTransparency = 1,
+				TextSize = 15,
 				TextXAlignment = Enum.TextXAlignment.Left,
 				TextTruncate = Enum.TextTruncate.AtEnd,
+				ZIndex = 50004,
 				Parent = ob,
 			})
-			local function paint(animate)
+			local function apply(animate, visible)
 				local on = multi and selected[v] or (single == v)
-				local info = animate and TI.FAST or TweenInfo.new(0)
-				tween(dot, { BackgroundTransparency = on and 0 or 1 }, info)
+				local info = animate and FADE or TweenInfo.new(0)
+				tween(dot, { BackgroundTransparency = (visible and on) and 0 or 1 }, info)
 				tween(olabel, {
-					TextTransparency = on and 0 or 0.35,
+					TextTransparency = visible and (on and 0 or 0.35) or 1,
 					Position = on and UDim2.new(0, 18, 0.5, 0) or UDim2.new(0, 8, 0.5, 0),
 				}, info)
 			end
-			ob._paint = paint
-			paint(false)
+			ob._apply = apply
+			apply(false, false)
 			ob.MouseEnter:Connect(function()
 				local on = multi and selected[v] or (single == v)
-				if not on then tween(olabel, { TextTransparency = 0.1 }, TI.HOVER) end
+				if open and not on then tween(olabel, { TextTransparency = 0.1 }, TI.HOVER) end
 			end)
 			ob.MouseLeave:Connect(function()
 				local on = multi and selected[v] or (single == v)
-				if not on then tween(olabel, { TextTransparency = 0.35 }, TI.HOVER) end
+				if open and not on then tween(olabel, { TextTransparency = 0.35 }, TI.HOVER) end
 			end)
 			ob.MouseButton1Click:Connect(function()
 				if multi then selected[v] = not selected[v] else single = v end
-				for _, b in ipairs(optionButtons) do b._paint(true) end
+				for _, b in ipairs(optionButtons) do b._apply(true, true) end
 				refreshLabel()
 				fire()
 				if not multi then control.Toggle(false) end
@@ -1173,19 +1208,50 @@ function Elements.Dropdown(parent, accent, opts)
 		end
 	end
 
-	-- smooth Rayfield-style expand: glide the list height + fade the panel in/out
-	local DROP_TI = TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
-	function control.Toggle(force)
-		open = (force == nil) and (not open) or force
-		-- exact fit: 26px rows + 3px gaps + 5px top/bottom padding
-		local target = open and (math.min(#options, 8) * 29 + 7) or 0
-		tween(listHolder, { Size = UDim2.new(1, 0, 0, target) }, DROP_TI)
-		tween(arrow, { Rotation = open and 180 or 0 }, TI.FAST)
+	-- open / close (fades the floating panel; tracks the field each frame)
+	local trackConn
+	local function fadePanel(opening)
+		tween(panel, { BackgroundTransparency = opening and 0 or 1 }, FADE)
+		tween(panelStroke, { Transparency = opening and 0.15 or 1 }, FADE)
+		tween(holder, { ScrollBarImageTransparency = opening and 0.25 or 1 }, FADE)
+		for _, ob in ipairs(optionButtons) do ob._apply(true, opening) end
+	end
+	local function track()
+		local fp, fs = field.AbsolutePosition, field.AbsoluteSize
+		local s = fs.Y / 28
+		if s <= 0 then s = 1 end
+		panelScale.Scale = s
+		local logicalH = math.clamp(#options * (OPT_H + 3) + 9, OPT_H + 12, PANEL_MAXH)
+		panel.Size = UDim2.fromOffset(fs.X / s, logicalH)
+		panel.Position = UDim2.fromOffset(fp.X, fp.Y + fs.Y + 6)
+	end
+	local ddHandle = {}
+	local function setOpen(b)
+		if b == open then return end
+		open = b
+		tween(arrow, { Rotation = open and 180 or 0, [arrowColorProp] = open and accent or THEME.SubText }, TI.FAST)
 		tween(field, { BackgroundColor3 = open and THEME.ElementHover or THEME.Element }, TI.FAST)
-		-- panel + border appear quickly so options are clearly visible while the
-		-- height glides them into view
-		tween(listInner, { BackgroundTransparency = open and 0 or 1 }, TI.FAST)
-		tween(listStroke, { Transparency = open and 0.15 or 1 }, TI.FAST)
+		if open then
+			if _ddCurrent and _ddCurrent ~= ddHandle then _ddCurrent.close() end
+			_ddCurrent = ddHandle
+			local layer = dropdownLayer(field)
+			if layer then panel.Parent = layer end
+			panel.Visible = true
+			track()
+			if trackConn then trackConn:Disconnect() end
+			trackConn = RunService.RenderStepped:Connect(track)
+			fadePanel(true)
+		else
+			if _ddCurrent == ddHandle then _ddCurrent = nil end
+			if trackConn then trackConn:Disconnect(); trackConn = nil end
+			fadePanel(false)
+			task.delay(0.18, function() if not open then panel.Visible = false end end)
+		end
+	end
+	ddHandle.close = function() setOpen(false) end
+
+	function control.Toggle(force)
+		setOpen((force == nil) and (not open) or force)
 	end
 	function control.Set(v)
 		if multi then
@@ -1194,12 +1260,14 @@ function Elements.Dropdown(parent, accent, opts)
 		else
 			single = v
 		end
-		rebuildOptions(); refreshLabel(); fire()
+		for _, b in ipairs(optionButtons) do b._apply(open, open) end
+		refreshLabel(); fire()
 	end
 	function control.Get() return multi and listValues() or single end
 	function control.SetOptions(newOptions)
 		options = newOptions or {}
 		rebuildOptions(); refreshLabel()
+		if open then track() end
 	end
 
 	local click = Create("TextButton", {
@@ -1210,12 +1278,17 @@ function Elements.Dropdown(parent, accent, opts)
 		Parent = row,
 	})
 	click.MouseButton1Click:Connect(function() control.Toggle() end)
+	click.MouseEnter:Connect(function()
+		if not open then tween(arrow, { [arrowColorProp] = THEME.Text }, TI.HOVER) end
+	end)
+	click.MouseLeave:Connect(function()
+		if not open then tween(arrow, { [arrowColorProp] = THEME.SubText }, TI.HOVER) end
+	end)
 
 	rebuildOptions(); refreshLabel()
 	if opts.flag then NEMESIS.Flags[opts.flag] = control.Get() end
 	return control
 end
-
 function Elements.Input(parent, accent, opts)
 	opts = opts or {}
 	local row = newRow(parent, ROW_H)
@@ -2115,6 +2188,7 @@ function NEMESIS.Window(opts)
 	end
 
 	local function showPage(tab, page, animate)
+		closeOpenDropdown()
 		tab.activePage = page
 		applyPageVisual(tab, page, animate ~= false)
 		if tab ~= activeTab then return end
@@ -2137,6 +2211,7 @@ function NEMESIS.Window(opts)
 	end
 
 	local function showTab(tab)
+		closeOpenDropdown()
 		activeTab = tab
 		for i, t in ipairs(tabs) do
 			t.sidebarFrame.Visible = (t == tab)
@@ -2694,6 +2769,7 @@ function NEMESIS.Window(opts)
 	local minimized = false
 	local function setMinimized(m)
 		minimized = m
+		closeOpenDropdown()
 		if resizeGrip then resizeGrip.Visible = not m end
 		if m then
 			topbarFiller.Visible = false

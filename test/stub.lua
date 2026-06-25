@@ -72,6 +72,14 @@ METHODS = {
 		end
 		return nil
 	end,
+	FindFirstAncestorWhichIsA = function(self, cn)
+		local p = self._props.Parent
+		while type(p) == "table" and rawget(p, "_props") do
+			if p._props.ClassName == cn then return p end
+			p = p._props.Parent
+		end
+		return nil
+	end,
 	WaitForChild = function(self, name)
 		return METHODS.FindFirstChild(self, name) or newInstance(name)
 	end,
@@ -92,6 +100,10 @@ instMeta.__index = function(self, k)
 		return s
 	end
 	if METHODS[k] then return METHODS[k] end
+	if self._props[k] == nil then
+		if k == "AbsolutePosition" then return Vector2.new(0, 0) end
+		if k == "AbsoluteSize" then return Vector2.new(120, 28) end
+	end
 	return self._props[k]
 end
 
