@@ -1891,7 +1891,7 @@ function NEMESIS.Window(opts)
 		AutomaticCanvasSize = Enum.AutomaticSize.Y,
 		ZIndex = 2,
 		Parent = sidebarBG,
-	}, { padXY(10, 10) })
+	})
 
 	local content = Create("Frame", {
 		Position = UDim2.new(0, SB_MARGIN + SIDEBAR_W + SB_GAP, 0, 0),
@@ -2163,6 +2163,10 @@ function NEMESIS.Window(opts)
 			Parent = sidebarScroll,
 		}, {
 			Create("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 3) }),
+			Create("UIPadding", {
+				PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12),
+				PaddingTop = UDim.new(0, 12), PaddingBottom = UDim.new(0, 12),
+			}),
 		})
 
 		local groupCount = 0
