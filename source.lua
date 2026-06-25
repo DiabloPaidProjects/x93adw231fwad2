@@ -2090,8 +2090,9 @@ function NEMESIS.Window(opts)
 			})
 		end
 
-		-- top-tab segment: flush full-height fill (clipped to the bar's rounded
-		-- corners), no underline / accent
+		-- top-tab segment: full-height fill that rounds its OWN corners (the
+		-- executor doesn't clip children to the bar's rounded corners, so the fill
+		-- needs corner(8) of its own to sit flush in the bar's rounded ends)
 		tabBarOrder = tabBarOrder + 1
 		local btn = Create("TextButton", {
 			Size = UDim2.new(0, 0, 1, 0),
@@ -2106,6 +2107,7 @@ function NEMESIS.Window(opts)
 			LayoutOrder = tabBarOrder,
 			Parent = tabBar,
 		}, {
+			corner(8),
 			Create("UIPadding", { PaddingLeft = UDim.new(0, 22), PaddingRight = UDim.new(0, 22) }),
 		})
 		tab.button = btn
