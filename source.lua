@@ -594,7 +594,8 @@ function NEMESIS.Notify(opts)
 	end
 	local title = Create("TextLabel", {
 		Name = "Title", AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, titleLeft, 0.5, 0),
-		Size = UDim2.new(1, -titleLeft, 1, 0), Font = FONT_BOLD, Text = tostring(opts.title or "Notification"),
+		Size = UDim2.new(1, -titleLeft, 1, 0), BackgroundTransparency = 1, Font = FONT_BOLD,
+		Text = tostring(opts.title or "Notification"),
 		TextColor3 = accent, TextSize = 16, TextXAlignment = Enum.TextXAlignment.Left, TextTransparency = 1, Parent = head,
 	})
 
@@ -725,17 +726,31 @@ end
 
 -- Make any TextBox grow its (offset-width) field to fit the typed text, between
 -- minW..maxW, then clip so the front scrolls off instead of spilling outside.
--- Sizes from the real text only (an empty box stays at minW; placeholder ignored).
+-- Grows the field to fit the typed text, or the placeholder when empty (so the
+-- placeholder is never clipped), between minW..maxW, then clips.
 local function growBox(field, box, minW, maxW, pad)
 	field.ClipsDescendants = true
+	-- hidden measuring label for the placeholder width (TextBounds of an empty
+	-- TextBox doesn't reflect its placeholder)
+	local measure = Create("TextLabel", {
+		BackgroundTransparency = 1, TextTransparency = 1, Visible = true,
+		AutomaticSize = Enum.AutomaticSize.X, Size = UDim2.new(0, 0, 0, 16),
+		Position = UDim2.new(0, 0, 2, 0), Font = box.FontFace or FONT, Text = box.PlaceholderText or "",
+		TextSize = box.TextSize, Parent = field,
+	})
 	local function fit()
 		local tb = 0
-		if box.Text ~= "" then pcall(function() tb = box.TextBounds.X end) end
+		if box.Text ~= "" then
+			pcall(function() tb = box.TextBounds.X end)
+		else
+			pcall(function() tb = measure.TextBounds.X end)
+		end
 		local y = field.Size.Y
 		field.Size = UDim2.new(0, math.clamp(tb + pad, minW, maxW), y.Scale, y.Offset)
 	end
 	box:GetPropertyChangedSignal("Text"):Connect(fit)
 	box:GetPropertyChangedSignal("TextBounds"):Connect(fit)
+	measure:GetPropertyChangedSignal("TextBounds"):Connect(fit)
 	fit()
 	return fit
 end
@@ -2037,6 +2052,7 @@ local function makeSection(host, accent, title)
 		Create("UIListLayout", {
 			SortOrder = Enum.SortOrder.LayoutOrder,
 			HorizontalAlignment = Enum.HorizontalAlignment.Center,
+			Padding = UDim.new(0, 6),
 		}),
 		Create("UIPadding", { PaddingTop = UDim.new(0, 6), PaddingBottom = UDim.new(0, 16) }),
 	})
