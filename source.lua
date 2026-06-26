@@ -2244,11 +2244,12 @@ function NEMESIS.Window(opts)
 		Parent = topbar,
 	})
 
-	-- centering frame between the logo and the search pill
+	-- centring frame between the logo/title and the right-side icons; the tabs
+	-- inside it stay centred and reflow automatically as the window resizes
 	local tabArea = Create("Frame", {
 		AnchorPoint = Vector2.new(0, 0.5),
-		Position = UDim2.new(0, 196, 0.5, 0),
-		Size = UDim2.new(1, -(196 + 324), 1, 0),
+		Position = UDim2.new(0, 210, 0.5, 0),
+		Size = UDim2.new(1, -(210 + 120), 1, 0),
 		BackgroundTransparency = 1,
 		Parent = topbar,
 	}, {
@@ -2366,29 +2367,37 @@ function NEMESIS.Window(opts)
 	local closeBtn = topbarIcon("x", "\u{2715}", -16, 16)
 	local minBtn, setMinIcon = topbarIcon("minus", "\u{2013}", -48, 18)
 
-	-- search pill
-	local searchW = IS_MOBILE and 150 or 230
-	local searchPill = Create("Frame", {
-		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, -82, 0.5, 0),
-		Size = UDim2.new(0, searchW, 0, 34),
+	-- search is a small icon; clicking it opens the search bar over the tabs
+	local searchBtn = topbarIcon("search", "\u{1F50E}", -82, 16)
+
+	-- the search bar that animates in over the tab area (Rayfield style)
+	local searchBar = Create("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 45, 0.5, 0),
+		Size = UDim2.new(0, 360, 0, 34),
 		BackgroundColor3 = THEME.Element,
+		BackgroundTransparency = 1,
+		ClipsDescendants = true,
+		Visible = false,
+		ZIndex = 6,
 		Parent = topbar,
-	}, { corner(10), stroke(THEME.Stroke, 1, 0.3) })
-	local searchPillStroke = searchPill:FindFirstChildOfClass("UIStroke")
-	local searchIcon = Create("ImageLabel", {
+	}, { corner(10), stroke(THEME.Stroke, 1, 1) })
+	local searchBarStroke = searchBar:FindFirstChildOfClass("UIStroke")
+	local searchBarIcon = Create("ImageLabel", {
 		AnchorPoint = Vector2.new(0, 0.5),
-		Position = UDim2.new(0, 11, 0.5, 0),
-		Size = UDim2.new(0, 15, 0, 15),
+		Position = UDim2.new(0, 12, 0.5, 0),
+		Size = UDim2.new(0, 16, 0, 16),
 		BackgroundTransparency = 1,
 		ImageColor3 = THEME.SubText,
-		Parent = searchPill,
+		ImageTransparency = 1,
+		ZIndex = 7,
+		Parent = searchBar,
 	})
-	local hasSearchIcon = applyIcon(searchIcon, resolveIcon("search"))
+	local hasSearchIcon = applyIcon(searchBarIcon, resolveIcon("search"))
 	local searchBox = Create("TextBox", {
 		BackgroundTransparency = 1,
-		Position = UDim2.new(0, hasSearchIcon and 34 or 12, 0, 0),
-		Size = UDim2.new(1, hasSearchIcon and -44 or -22, 1, 0),
+		Position = UDim2.new(0, hasSearchIcon and 36 or 14, 0, 0),
+		Size = UDim2.new(1, hasSearchIcon and -48 or -26, 1, 0),
 		Font = FONT,
 		PlaceholderText = "Search (Ctrl + K)",
 		Text = "",
@@ -2397,10 +2406,10 @@ function NEMESIS.Window(opts)
 		TextSize = 15,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		ClearTextOnFocus = false,
-		Parent = searchPill,
+		TextTransparency = 1,
+		ZIndex = 7,
+		Parent = searchBar,
 	})
-	-- search pill grows left with the query (capped), then clips
-	growBox(searchPill, searchBox, searchW, searchW + 130, hasSearchIcon and 48 or 26)
 
 	-- Body: sidebar (with footer) | content (header + pages)
 	local body = Create("Frame", {
@@ -2518,12 +2527,44 @@ function NEMESIS.Window(opts)
 	end
 
 	searchBox:GetPropertyChangedSignal("Text"):Connect(function() runSearch(searchBox.Text) end)
-	searchBox.Focused:Connect(function()
-		if searchPillStroke then tween(searchPillStroke, { Color = accent }, TI.EXP) end
-	end)
-	searchBox.FocusLost:Connect(function()
-		if searchPillStroke then tween(searchPillStroke, { Color = THEME.Stroke }, TI.EXP) end
-	end)
+
+	-- Rayfield-style search: the bar grows in over the tabs, then shrinks back out
+	local searchOpen = false
+	local function sExp(t) return TweenInfo.new(t, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out) end
+	local function sQuint(t) return TweenInfo.new(t, Enum.EasingStyle.Quint, Enum.EasingDirection.Out) end
+	local function openSearch()
+		if searchOpen then return end
+		searchOpen = true
+		tabBar.Visible = false
+		searchBar.Visible = true
+		searchBar.BackgroundTransparency = 1
+		searchBar.Size = UDim2.new(0, 400, 0, 44)
+		searchBar.Position = UDim2.new(0.5, 45, 0.5, 7)
+		searchBox.TextTransparency = 1
+		searchBarIcon.ImageTransparency = 1
+		if searchBarStroke then searchBarStroke.Transparency = 1 end
+		pcall(function() searchBox:CaptureFocus() end)
+		tween(searchBar, { BackgroundTransparency = 0.05, Position = UDim2.new(0.5, 45, 0.5, 0) }, sExp(0.3))
+		tween(searchBar, { Size = UDim2.new(0, 360, 0, 34) }, sExp(0.5))
+		tween(searchBox, { TextTransparency = 0 }, sExp(0.3))
+		tween(searchBarIcon, { ImageTransparency = 0.2 }, sExp(0.3))
+		if searchBarStroke then tween(searchBarStroke, { Transparency = 0.4 }, sExp(0.3)) end
+	end
+	local function closeSearch()
+		if not searchOpen then return end
+		searchOpen = false
+		tween(searchBar, { BackgroundTransparency = 1, Size = UDim2.new(0, 320, 0, 30) }, sQuint(0.3))
+		tween(searchBox, { TextTransparency = 1 }, sQuint(0.15))
+		tween(searchBarIcon, { ImageTransparency = 1 }, sQuint(0.15))
+		if searchBarStroke then tween(searchBarStroke, { Transparency = 1 }, sQuint(0.15)) end
+		searchBox.Text = ""
+		runSearch("")
+		task.delay(0.32, function()
+			if not searchOpen then searchBar.Visible = false; tabBar.Visible = true end
+		end)
+	end
+	searchBtn.MouseButton1Click:Connect(openSearch)
+	searchBox.FocusLost:Connect(closeSearch)
 
 	local function setCrumb(tab, page)
 		local segs = { tab.name }
@@ -3180,7 +3221,9 @@ function NEMESIS.Window(opts)
 				return UserInputService:IsKeyDown(Enum.KeyCode.LeftControl)
 					or UserInputService:IsKeyDown(Enum.KeyCode.RightControl)
 			end)
-			if ok and down then pcall(function() searchBox:CaptureFocus() end) end
+			if ok and down then openSearch() end
+		elseif input.KeyCode == Enum.KeyCode.Escape then
+			closeSearch()
 		end
 	end)
 
