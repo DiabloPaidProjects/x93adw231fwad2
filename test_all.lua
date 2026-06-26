@@ -19,9 +19,7 @@ local Win = NEMESIS.Window({
 	toggleKey = Enum.KeyCode.RightShift,
 })
 
---====================================================================
 -- TAB 1 - Elements (one Group, several Pages, every control)
---====================================================================
 local Elements = Win.Tab("Elements", "layout-grid")
 local Basic = Elements.Group("BASICS")
 
@@ -77,9 +75,7 @@ local s6 = Info.Section("ABOUT")
 s6.Paragraph({ title = "Paragraph", content = "A title plus a longer wrapping body of text that demonstrates the Paragraph element inside a section." })
 s6.Label("Standalone pages render below the groups, just like the mockup's Backtrack / Anti-Aim / Misc.")
 
---====================================================================
 -- TAB 2 - Control (programmatic Set/Get)
---====================================================================
 local ControlTab = Win.Tab("Control", "sliders-horizontal")
 local Live = ControlTab.Page("Live", { icon = "settings-2" })
 local s7 = Live.Section("DRIVEN BY BUTTONS")
@@ -98,9 +94,7 @@ s8.Button({ text = "Read all values", button = "Read", callback = function()
 		.. " drop=" .. tostring(liveDrop.Get()), 4)
 end })
 
---====================================================================
 -- TAB 3 - Layout (two groups so sidebar grouping + dividers show)
---====================================================================
 local Layout = Win.Tab("Layout", "columns-2")
 local Combat = Layout.Group("COMBAT")
 local CombatMain = Combat.Page("Aimbot", { icon = "crosshair" })

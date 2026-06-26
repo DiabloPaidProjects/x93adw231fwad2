@@ -18,9 +18,7 @@ local Win = NEMESIS.Window({
 	toggleKey = Enum.KeyCode.RightShift,
 })
 
---====================================================================
 -- COMBAT
---====================================================================
 local Combat = Win.Tab("Combat", "crosshair")
 
 -- AIMBOT group ------------------------------------------------------
@@ -124,9 +122,7 @@ mcA.Toggle({ text = "Auto Strafe", default = false, flag = "mc_strafe" })
 local mcB = Misc.Section("SPEED")
 mcB.Slider({ text = "Walk Speed", min = 100, max = 400, default = 250, increment = 5, suffix = "%", flag = "mc_speed" })
 
---====================================================================
 -- VISUALS
---====================================================================
 local Visuals = Win.Tab("Visuals", "eye")
 local Esp = Visuals.Group("PLAYER ESP")
 local EspGeneral = Esp.Page("General", { icon = "eye" })
@@ -151,9 +147,7 @@ wvA.Toggle({ text = "Full Bright", default = false, flag = "w_bright" })
 local wvB = WorldGen.Section("NIGHT")
 wvB.Slider({ text = "Night Mode", min = 0, max = 100, default = 0, increment = 1, suffix = "%", flag = "w_night" })
 
---====================================================================
 -- PLAYER / WORLD / CONFIG (stubbed so every top tab navigates)
---====================================================================
 local Player = Win.Tab("Player", "user")
 local PlayerMain = Player.Group("PLAYER").Page("Movement", { icon = "person-standing" })
 local pmA = PlayerMain.Section("MOVEMENT")

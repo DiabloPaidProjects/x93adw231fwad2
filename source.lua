@@ -24,9 +24,7 @@ local NEMESIS = {}
 NEMESIS.Flags = {}
 NEMESIS.Version = "1.0.0"
 
-----------------------------------------------------------------------
 -- Services (cloneref-safe)
-----------------------------------------------------------------------
 local function getService(name)
 	local ok, svc = pcall(function()
 		return game:GetService(name)
@@ -49,9 +47,7 @@ local RunService = getService("RunService")
 local Players = getService("Players")
 local CoreGui = getService("CoreGui")
 
-----------------------------------------------------------------------
 -- Executor compatibility
-----------------------------------------------------------------------
 local function localPlayer()
 	return Players and Players.LocalPlayer
 end
@@ -95,11 +91,9 @@ local function setClipboard(text)
 	return false
 end
 
-----------------------------------------------------------------------
 -- Brand logo (real image, no Roblox upload needed)
 -- Downloads the PNG and exposes it via the executor's custom-asset API
 -- (getcustomasset / getsynasset), cached on disk after the first load.
-----------------------------------------------------------------------
 -- versioned path: bump the filename (URL + on-disk cache) whenever the logo
 -- changes, so neither the GitHub CDN nor the executor serves a stale image
 -- grayscale logo so ImageColor3 can tint it to any hue at runtime
@@ -138,9 +132,7 @@ local function loadBrandLogo()
 	return brandLogoCache or nil
 end
 
-----------------------------------------------------------------------
 -- Icons (Lucide names via Rayfield's icon map, or raw asset IDs)
-----------------------------------------------------------------------
 local ICON_URL = "https://raw.githubusercontent.com/SiriusSoftwareLtd/Rayfield/refs/heads/main/icons.lua"
 local iconMap = nil -- nil = not tried, false = failed, table = loaded
 
@@ -211,9 +203,7 @@ local function applyIcon(image, spec)
 	return true
 end
 
-----------------------------------------------------------------------
 -- Instance helpers
-----------------------------------------------------------------------
 local function Create(class, props, children)
 	local inst = Instance.new(class)
 	if props then
@@ -276,9 +266,7 @@ local function tagSearch(frame, text)
 	end)
 end
 
-----------------------------------------------------------------------
 -- Theme
-----------------------------------------------------------------------
 local THEME = {
 	Background = Color3.fromRGB(13, 14, 20),      -- window / content background
 	Sidebar = Color3.fromRGB(16, 17, 24),         -- left sidebar
@@ -321,9 +309,7 @@ local function hexOf(c)
 		math.floor((c.B or 0) * 255 + 0.5))
 end
 
-----------------------------------------------------------------------
 -- Gradient helpers
-----------------------------------------------------------------------
 local function numSeq(a, b)
 	return NumberSequence.new({
 		NumberSequenceKeypoint.new(0, a),
@@ -339,9 +325,7 @@ local function hueSequence()
 	return ColorSequence.new(kp)
 end
 
-----------------------------------------------------------------------
 -- Tween helpers
-----------------------------------------------------------------------
 -- smooth & snappy easing set: short Quint/Quad Out glides that read as fluid
 -- but stay responsive (hover is fast; no sluggish 0.6s curves anywhere)
 local TI = {
@@ -363,30 +347,22 @@ local function tween(inst, props, info)
 	return t
 end
 
-----------------------------------------------------------------------
--- Accent theme registry (live recolor via Win.SetAccent)
-----------------------------------------------------------------------
+-- Accent registry: callbacks run on Win.SetAccent so the menu recolours live
 local accentHooks = {}
--- register a recolor callback fn(newAccent); call it once now with cur if given
 local function onAccent(fn) accentHooks[#accentHooks + 1] = fn end
--- helper: a lighter shade of an accent (for gradients)
 local function accentLight(c) return c:Lerp(Color3.fromRGB(255, 255, 255), 0.35) end
--- set a colour property now AND keep it tracking the accent
 local function accentProp(inst, prop, accent)
 	inst[prop] = accent
 	onAccent(function(c) pcall(function() inst[prop] = c end) end)
 	return inst
 end
--- keep a UIGradient tracking the accent (accent -> lighter)
 local function accentGrad(grad, accent)
 	grad.Color = ColorSequence.new(accent, accentLight(accent))
 	onAccent(function(c) pcall(function() grad.Color = ColorSequence.new(c, accentLight(c)) end) end)
 	return grad
 end
 
-----------------------------------------------------------------------
 -- Mobile / scale
-----------------------------------------------------------------------
 local IS_MOBILE = false
 pcall(function()
 	IS_MOBILE = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
@@ -411,9 +387,7 @@ local function computeScale()
 	return math.clamp(w / 1560, 0.7, 1.0)
 end
 
-----------------------------------------------------------------------
 -- Unified mouse + touch drag
-----------------------------------------------------------------------
 local function makeDraggable(frame, handle)
 	handle = handle or frame
 	local dragging = false
@@ -504,9 +478,7 @@ local function smoothScroll(sf)
 	end)
 end
 
-----------------------------------------------------------------------
 -- Root ScreenGui + notifications
-----------------------------------------------------------------------
 local screenGui
 local notifyHolder
 
@@ -545,9 +517,7 @@ local function ensureRoot()
 	return screenGui
 end
 
-----------------------------------------------------------------------
 -- Notifications
-----------------------------------------------------------------------
 function NEMESIS.Notify(opts)
 	opts = opts or {}
 	ensureRoot()
@@ -649,9 +619,7 @@ function NEMESIS.Notify(opts)
 	end)
 end
 
-----------------------------------------------------------------------
 -- Inline row scaffold (label on the left, control on the right)
-----------------------------------------------------------------------
 -- Rows live inside a Section's body, separated by spacing only (no divider lines).
 local function newRow(parent, height)
 	return Create("Frame", {
@@ -731,14 +699,11 @@ local function fieldBox(row, frac)
 	}, { corner(8), stroke(THEME.ElementStroke, 1, 0.2) })
 end
 
--- Make any TextBox grow its (offset-width) field to fit the typed text, between
--- minW..maxW, then clip so the front scrolls off instead of spilling outside.
--- Grows the field to fit the typed text, or the placeholder when empty (so the
--- placeholder is never clipped), between minW..maxW, then clips.
+-- Grows a TextBox field to fit the typed text (or the placeholder when empty),
+-- between minW and maxW, then clips so long text scrolls instead of overflowing.
 local function growBox(field, box, minW, maxW, pad)
 	field.ClipsDescendants = true
-	-- hidden measuring label for the placeholder width (TextBounds of an empty
-	-- TextBox doesn't reflect its placeholder)
+	-- TextBounds of an empty box ignores the placeholder, so measure it separately
 	local measure = Create("TextLabel", {
 		BackgroundTransparency = 1, TextTransparency = 1, Visible = true,
 		AutomaticSize = Enum.AutomaticSize.X, Size = UDim2.new(0, 0, 0, 16),
@@ -762,9 +727,7 @@ local function growBox(field, box, minW, maxW, pad)
 	return fit
 end
 
-----------------------------------------------------------------------
 -- Element factories: (parent, accent, opts) -> control { Set, Get }
-----------------------------------------------------------------------
 local Elements = {}
 
 function Elements.Label(parent, accent, text)
@@ -847,7 +810,6 @@ function Elements.Divider(parent, accent, opts)
 	end
 	return { Instance = row }
 end
-
 
 -- neverlose-style listbox: an always-open scrollable list of selectable items
 -- (single or multi). options use the same accent-dot + slide style as dropdowns.
@@ -1587,9 +1549,7 @@ function Elements.Input(parent, accent, opts)
 	return control
 end
 
-----------------------------------------------------------------------
 -- Keybind (supports keyboard KeyCodes and mouse buttons via strings)
-----------------------------------------------------------------------
 local MOUSE_TO_UIT = { MOUSE1 = "MouseButton1", MOUSE2 = "MouseButton2", MOUSE3 = "MouseButton3" }
 
 local function keyDisplay(k)
@@ -1685,9 +1645,7 @@ function Elements.Keybind(parent, accent, opts)
 	return control
 end
 
-----------------------------------------------------------------------
 -- Color picker (full pop-out panel: SV square, hue, alpha, HEX)
-----------------------------------------------------------------------
 function Elements.ColorPicker(parent, accent, opts)
 	opts = opts or {}
 	-- two colour slots: slot 1 is the colour (single mode) / first gradient colour,
@@ -2026,9 +1984,7 @@ function Elements.ColorPicker(parent, accent, opts)
 	return control
 end
 
-----------------------------------------------------------------------
 -- Collapsible content section ("GENERAL", "HITBOX", …)
-----------------------------------------------------------------------
 local function makeSection(host, accent, title)
 	local card = Create("Frame", {
 		BackgroundColor3 = THEME.Group,
@@ -2147,9 +2103,7 @@ local function makeSection(host, accent, title)
 	return host
 end
 
-----------------------------------------------------------------------
 -- Window
-----------------------------------------------------------------------
 local function titleCase(str)
 	str = tostring(str or "")
 	return (string.gsub(string.lower(str), "(%a)([%w]*)", function(a, b)
@@ -2192,9 +2146,7 @@ function NEMESIS.Window(opts)
 		stroke(THEME.Stroke, 1.5, 0),
 	})
 
-	--------------------------------------------------------------------
 	-- Top bar: logo + wordmark | top tabs | search + min/close
-	--------------------------------------------------------------------
 	local topbar = Create("Frame", {
 		Size = UDim2.new(1, 0, 0, TOPBAR_H),
 		BackgroundColor3 = THEME.Topbar,
@@ -2450,9 +2402,7 @@ function NEMESIS.Window(opts)
 	-- search pill grows left with the query (capped), then clips
 	growBox(searchPill, searchBox, searchW, searchW + 130, hasSearchIcon and 48 or 26)
 
-	--------------------------------------------------------------------
 	-- Body: sidebar (with footer) | content (header + pages)
-	--------------------------------------------------------------------
 	local body = Create("Frame", {
 		Position = UDim2.new(0, 0, 0, TOPBAR_H),
 		Size = UDim2.new(1, 0, 1, -TOPBAR_H),
@@ -2549,9 +2499,7 @@ function NEMESIS.Window(opts)
 	root.Size = UDim2.new(0, W, 0, 0)
 	tween(root, { Size = UDim2.new(0, W, 0, H) }, TI.OPEN)
 
-	--------------------------------------------------------------------
 	-- Navigation state
-	--------------------------------------------------------------------
 	local Win = {}
 	local tabs = {}
 	local activeTab
@@ -2651,9 +2599,7 @@ function NEMESIS.Window(opts)
 		end
 	end
 
-	--------------------------------------------------------------------
 	-- Tab / Group / Page builders
-	--------------------------------------------------------------------
 	function Win.Tab(name, icon)
 		local tab = { name = tostring(name or "Tab"), pages = {}, activePage = nil }
 
@@ -3029,9 +2975,7 @@ function NEMESIS.Window(opts)
 		return Tab
 	end
 
-	--------------------------------------------------------------------
 	-- resize grip (bottom-right)
-	--------------------------------------------------------------------
 	local minW = IS_MOBILE and 420 or 640
 	local minH = 380
 	-- SIRIUS X resize handle: a large invisible hit area + the curved corner icon
@@ -3185,9 +3129,7 @@ function NEMESIS.Window(opts)
 		end)
 	end
 
-	--------------------------------------------------------------------
 	-- minimize / restore, close, hide-key, mobile reopen
-	--------------------------------------------------------------------
 	local minimized = false
 	local function setMinimized(m)
 		minimized = m
@@ -3288,5 +3230,4 @@ function NEMESIS.Window(opts)
 	return Win
 end
 
-----------------------------------------------------------------------
 return NEMESIS

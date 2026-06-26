@@ -25,9 +25,7 @@ local Win = NEMESIS.Window({
 	-- logoColor = Color3.fromRGB(150, 85, 255), -- optional: recolor the N logo
 })
 
---======================================================================
 -- TAB 1 : ELEMENTS  (one of every control, with its options)
---======================================================================
 local Elements = Win.Tab("Elements", "layout-grid")
 local Basics = Elements.Group("BASICS")
 
@@ -112,9 +110,7 @@ local s_info = Info.Section("ABOUT")
 s_info.Paragraph({ title = "Standalone pages", content = "Pages added with Tab.Page (instead of Group.Page) render below the groups, like this one." })
 s_info.Label("Every flag value lives in NEMESIS.Flags, keyed by its flag name.")
 
---======================================================================
 -- TAB 2 : LAYOUT  (groups, dividers, and the two-column grid)
---======================================================================
 local Layout = Win.Tab("Layout", "columns-2")
 
 local Combat = Layout.Group("COMBAT")
@@ -145,9 +141,7 @@ local gridR = Grid.Section("RIGHT COLUMN", { column = 2 }) -- forced into column
 gridR.Toggle({ text = "Manual column 2", default = false, flag = "sc_grid_b" })
 gridR.Dropdown({ text = "Mode", options = { "A", "B", "C" }, default = "A", flag = "sc_grid_m" })
 
---======================================================================
 -- TAB 3 : CONTROL  (programmatic Set / Get and SetOptions)
---======================================================================
 local Control = Win.Tab("Control", "settings-2")
 local Live = Control.Page("Live", { icon = "activity" })
 
@@ -172,9 +166,7 @@ s_actions.Button({ text = "Read all values", button = "Read", callback = functio
 		.. "  drop=" .. tostring(liveDrop.Get()), 4)
 end })
 
---======================================================================
 -- TAB 4 : CONFIG  (logo recolor, accent presets, notifications)
---======================================================================
 local Config = Win.Tab("Config", "settings")
 local Cfg = Config.Page("Interface", { icon = "palette" })
 
@@ -206,5 +198,4 @@ end })
 local s_credits = Cfg.Section("ABOUT")
 s_credits.Paragraph({ title = "NEMESIS", content = "idk" })
 
---======================================================================
 NEMESIS.Notify({ title = "NEMESIS", content = "Showcase loaded. Explore every tab.", duration = 5 })
