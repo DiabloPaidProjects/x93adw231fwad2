@@ -1763,7 +1763,7 @@ function Elements.ColorPicker(parent, accent, opts)
 		backdrop.MouseButton1Click:Connect(function() openPanel(false) end)
 		local panelScale = Create("UIScale", { Scale = 1 })
 		panel = Create("CanvasGroup", {
-			Name = "ColorPanel", Size = UDim2.new(0, 300, 0, 432), BackgroundColor3 = THEME.Group,
+			Name = "ColorPanel", Size = UDim2.new(0, 282, 0, 384), BackgroundColor3 = THEME.Group,
 			GroupTransparency = 1, Visible = false, ZIndex = 50001, Parent = screenGui,
 		}, {
 			corner(14), stroke(THEME.ElementStroke, 1, 0.35), panelScale,
@@ -1813,7 +1813,7 @@ function Elements.ColorPicker(parent, accent, opts)
 		slotSeg.Parent = slotRow
 
 		-- SV square (matched 8px corners on every layer + a clean boundary stroke)
-		local sv = Create("Frame", { Size = UDim2.new(1, 0, 0, 150), BackgroundColor3 = Color3.fromHSV(cur().h, 1, 1), LayoutOrder = 3, Parent = content }, { corner(8), stroke(THEME.ElementStroke, 1, 0.4) })
+		local sv = Create("Frame", { Size = UDim2.new(1, 0, 0, 122), BackgroundColor3 = Color3.fromHSV(cur().h, 1, 1), LayoutOrder = 3, Parent = content }, { corner(8), stroke(THEME.ElementStroke, 1, 0.4) })
 		svBase = sv
 		Create("Frame", { Size = UDim2.new(1, 0, 1, 0), BackgroundColor3 = Color3.new(1, 1, 1), Parent = sv }, { corner(8), Create("UIGradient", { Transparency = numSeq(0, 1) }) })
 		Create("Frame", { Size = UDim2.new(1, 0, 1, 0), BackgroundColor3 = Color3.new(0, 0, 0), Parent = sv }, { corner(8), Create("UIGradient", { Rotation = 90, Transparency = numSeq(1, 0) }) })
@@ -1860,13 +1860,13 @@ function Elements.ColorPicker(parent, accent, opts)
 		-- scrollable so presets + any number of saved colours fit (right-click a
 		-- saved colour to remove it)
 		local gridWrap = Create("ScrollingFrame", {
-			Size = UDim2.new(1, 0, 0, 102), BackgroundTransparency = 1, BorderSizePixel = 0,
+			Size = UDim2.new(1, 0, 0, 98), BackgroundTransparency = 1, BorderSizePixel = 0,
 			ScrollBarThickness = 3, ScrollBarImageColor3 = accent, ScrollBarImageTransparency = 0.3,
 			CanvasSize = UDim2.new(0, 0, 0, 0), AutomaticCanvasSize = Enum.AutomaticSize.Y,
 			ScrollingDirection = Enum.ScrollingDirection.Y, LayoutOrder = 6, Parent = content,
 		})
 		local grid = Create("Frame", { Size = UDim2.new(1, -6, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, BackgroundTransparency = 1, Parent = gridWrap }, {
-			Create("UIGridLayout", { CellSize = UDim2.new(0, 40, 0, 30), CellPadding = UDim2.new(0, 6, 0, 6), SortOrder = Enum.SortOrder.LayoutOrder }),
+			Create("UIGridLayout", { CellSize = UDim2.new(0, 36, 0, 26), CellPadding = UDim2.new(0, 6, 0, 6), SortOrder = Enum.SortOrder.LayoutOrder }),
 		})
 		local function swatchTile(color, order, kind, savedIdx)
 			local t = Create("TextButton", {
@@ -1934,10 +1934,10 @@ function Elements.ColorPicker(parent, accent, opts)
 		if opened then
 			if _ddCurrent and _ddCurrent ~= cpHandle then _ddCurrent.close() end
 			_ddCurrent = cpHandle
-			local tx, ty = 0.5 * 1920 - 150, 0.5 * 1080 - 216
+			local tx, ty = 0.5 * 1920 - 141, 0.5 * 1080 - 192
 			pcall(function()
 				local p = sw1.AbsolutePosition
-				tx, ty = p.X - 258, p.Y + 30
+				tx, ty = p.X - 240, p.Y + 30
 			end)
 			local CP_OPEN = TweenInfo.new(0.26, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
 			backdrop.Visible = true
