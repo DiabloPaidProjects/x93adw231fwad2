@@ -1136,7 +1136,7 @@ function Elements.Dropdown(parent, accent, opts)
 	-- right when selected; dimmed text when not)
 	local optionButtons = {}
 	local function rebuildOptions()
-		for _, b in ipairs(optionButtons) do b:Destroy() end
+		for _, rec in ipairs(optionButtons) do rec.btn:Destroy() end
 		optionButtons = {}
 		for _, v in ipairs(options) do
 			local ob = Create("TextButton", {
@@ -1187,7 +1187,6 @@ function Elements.Dropdown(parent, accent, opts)
 					Position = on and UDim2.new(0, 18, 0.5, 0) or UDim2.new(0, 8, 0.5, 0),
 				}, info)
 			end
-			ob._apply = apply
 			apply(false, false)
 			ob.MouseEnter:Connect(function()
 				local on = multi and selected[v] or (single == v)
@@ -1199,12 +1198,13 @@ function Elements.Dropdown(parent, accent, opts)
 			end)
 			ob.MouseButton1Click:Connect(function()
 				if multi then selected[v] = not selected[v] else single = v end
-				for _, b in ipairs(optionButtons) do b._apply(true, true) end
+				for _, rec in ipairs(optionButtons) do rec.apply(true, true) end
 				refreshLabel()
 				fire()
 				if not multi then control.Toggle(false) end
 			end)
-			table.insert(optionButtons, ob)
+			-- keep the apply fn in a plain Lua record (cannot store fields on Instances)
+			table.insert(optionButtons, { btn = ob, apply = apply })
 		end
 	end
 
@@ -1214,7 +1214,7 @@ function Elements.Dropdown(parent, accent, opts)
 		tween(panel, { BackgroundTransparency = opening and 0 or 1 }, FADE)
 		tween(panelStroke, { Transparency = opening and 0.15 or 1 }, FADE)
 		tween(holder, { ScrollBarImageTransparency = opening and 0.25 or 1 }, FADE)
-		for _, ob in ipairs(optionButtons) do ob._apply(true, opening) end
+		for _, rec in ipairs(optionButtons) do rec.apply(true, opening) end
 	end
 	local function track()
 		local fp, fs = field.AbsolutePosition, field.AbsoluteSize
@@ -1260,7 +1260,7 @@ function Elements.Dropdown(parent, accent, opts)
 		else
 			single = v
 		end
-		for _, b in ipairs(optionButtons) do b._apply(open, open) end
+		for _, rec in ipairs(optionButtons) do rec.apply(open, open) end
 		refreshLabel(); fire()
 	end
 	function control.Get() return multi and listValues() or single end

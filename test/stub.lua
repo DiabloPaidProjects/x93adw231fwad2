@@ -108,6 +108,11 @@ instMeta.__index = function(self, k)
 end
 
 instMeta.__newindex = function(self, k, v)
+	-- Roblox Instances reject custom fields; underscore-prefixed keys are a
+	-- common mistake (store such state in plain Lua tables, not on Instances)
+	if type(k) == "string" and k:sub(1, 1) == "_" then
+		error("cannot set custom field '" .. k .. "' on a Roblox Instance", 2)
+	end
 	if k == "Parent" then
 		self._props.Parent = v
 		if type(v) == "table" and rawget(v, "_children") then
