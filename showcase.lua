@@ -91,7 +91,20 @@ local s_co = CO.Section("COLOR PICKERS")
 s_co.ColorPicker({ text = "Solid color", default = Color3.fromRGB(255, 0, 80), transparency = 0, flag = "sc_c_solid",
 	callback = function(color, alpha) notify("Color", "alpha = " .. tostring(alpha), 1.5) end })
 s_co.ColorPicker({ text = "With transparency", default = Color3.fromRGB(0, 200, 255), transparency = 0.3, flag = "sc_c_alpha" })
-s_co.Label("Right-click a swatch to copy its hex code.")
+s_co.ColorPicker({ text = "Gradient color", gradient = true, default = Color3.fromRGB(255, 0, 0), gradientDefault = Color3.fromRGB(0, 0, 255), flag = "sc_c_grad" })
+s_co.Label("Right-click a swatch to copy its hex. In gradient mode you get two swatches; right-click a saved swatch to remove it.")
+s_co.Divider({ text = "MENU THEME" })
+s_co.ColorPicker({ text = "Menu accent (live)", default = Color3.fromRGB(140, 90, 255), flag = "sc_accent",
+	callback = function(color) Win.SetAccent(color) end })
+
+-- Page: Lists (Divider + Listbox)
+local LB = Basics.Page("Lists", { icon = "list-checks" })
+local s_lb = LB.Section("LISTBOX")
+s_lb.Listbox({ text = "Single select", options = { "Aimbot", "Triggerbot", "Backtrack", "Anti-Aim", "Fakelag" }, default = "Aimbot", rows = 4,
+	callback = function(v) notify("Listbox", "chose " .. tostring(v), 1.5) end })
+s_lb.Divider()
+s_lb.Listbox({ text = "Multi select", options = { "Head", "Neck", "Chest", "Stomach", "Pelvis", "Arms", "Legs" }, multi = true, default = { "Head", "Chest" }, rows = 4,
+	callback = function(list) notify("Listbox", table.concat(list, ", "), 2) end })
 
 -- Standalone page (renders below the group, no group header) -----------
 local Info = Elements.Page("Info", { icon = "info" })
