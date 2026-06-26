@@ -735,7 +735,10 @@ function Elements.Paragraph(parent, accent, opts)
 	}, {
 		corner(10),
 		stroke(THEME.Stroke, 1, 0.4),
-		padding(16),
+		Create("UIPadding", {
+			PaddingLeft = UDim.new(0, 16), PaddingRight = UDim.new(0, 16),
+			PaddingTop = UDim.new(0, 16), PaddingBottom = UDim.new(0, 24),
+		}),
 		Create("UIListLayout", { Padding = UDim.new(0, 7), SortOrder = Enum.SortOrder.LayoutOrder }),
 		Create("TextLabel", {
 			BackgroundTransparency = 1,
@@ -1293,7 +1296,17 @@ function Elements.Input(parent, accent, opts)
 	opts = opts or {}
 	local row = newRow(parent, ROW_H)
 	rowText(row, opts.text, opts.desc, FIELD_FRAC, 16)
-	local field = fieldBox(row)
+	-- Rayfield-style: starts small, grows with the text up to a cap, then clips
+	-- (the field scrolls so the front hides instead of spilling outside)
+	local MIN_W, MAX_W = 100, 220
+	local field = Create("Frame", {
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, 0, 0.5, 0),
+		Size = UDim2.new(0, MIN_W, 0, 28),
+		BackgroundColor3 = THEME.Element,
+		ClipsDescendants = true,
+		Parent = row,
+	}, { corner(8), stroke(THEME.ElementStroke, 1, 0.2) })
 	local fieldStroke = field:FindFirstChildOfClass("UIStroke")
 	local box = Create("TextBox", {
 		BackgroundTransparency = 1,
@@ -1309,6 +1322,13 @@ function Elements.Input(parent, accent, opts)
 		ClearTextOnFocus = opts.clearOnFocus and true or false,
 		Parent = field,
 	})
+	local function fitWidth()
+		local tb = 0
+		pcall(function() tb = box.TextBounds.X end)
+		tween(field, { Size = UDim2.new(0, math.clamp(tb + 22, MIN_W, MAX_W), 0, 28) }, TI.FAST)
+	end
+	box:GetPropertyChangedSignal("TextBounds"):Connect(fitWidth)
+	fitWidth()
 
 	local control = {}
 	function control.Set(v) box.Text = tostring(v) end

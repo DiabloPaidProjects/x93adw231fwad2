@@ -103,6 +103,7 @@ instMeta.__index = function(self, k)
 	if self._props[k] == nil then
 		if k == "AbsolutePosition" then return Vector2.new(0, 0) end
 		if k == "AbsoluteSize" then return Vector2.new(120, 28) end
+		if k == "TextBounds" then return Vector2.new(0, 0) end
 	end
 	return self._props[k]
 end
