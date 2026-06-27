@@ -2087,7 +2087,12 @@ local function makeSection(host, accent, title)
 
 	local host = {}
 	local function bind(elName)
-		return function(a) return Elements[elName](body, accent, a) end
+		-- Tolerate method-style calls: Section:Button({...}) passes the section
+		-- as the first arg, which would drop the user's options table.
+		return function(a, b)
+			if a == host then a = b end
+			return Elements[elName](body, accent, a)
+		end
 	end
 	host.Button = bind("Button")
 	host.Toggle = bind("Toggle")
@@ -2097,7 +2102,10 @@ local function makeSection(host, accent, title)
 	host.Keybind = bind("Keybind")
 	host.ColorPicker = bind("ColorPicker")
 	host.Paragraph = bind("Paragraph")
-	host.Label = function(text) return Elements.Label(body, accent, text) end
+	host.Label = function(text, b)
+		if text == host then text = b end -- tolerate Section:Label("X")
+		return Elements.Label(body, accent, text)
+	end
 	host.Divider = bind("Divider")
 	host.Listbox = bind("Listbox")
 	return host
@@ -2877,7 +2885,10 @@ function NEMESIS.Window(opts)
 				if not defaultHost then defaultHost = makeSection(pickColumn({ column = 1 }), accent, nil) end
 				return defaultHost
 			end
-			function Page.Section(t, sopts) return makeSection(pickColumn(sopts), accent, t) end
+			function Page.Section(t, sopts, ...)
+				if t == Page then t, sopts = sopts, ... end -- tolerate Page:Section("X")
+				return makeSection(pickColumn(sopts), accent, t)
+			end
 			Page.Button = function(a) return ensureDefault().Button(a) end
 			Page.Toggle = function(a) return ensureDefault().Toggle(a) end
 			Page.Slider = function(a) return ensureDefault().Slider(a) end
@@ -3012,7 +3023,10 @@ function NEMESIS.Window(opts)
 				end
 			end)
 			local Group = {}
-			function Group.Page(pname, popts) return makePage(pname, popts, gname, holder) end
+			function Group.Page(pname, popts, ...)
+				if pname == Group then pname, popts = popts, ... end -- tolerate Group:Page("X")
+				return makePage(pname, popts, gname, holder)
+			end
 			return Group
 		end
 
